@@ -76,3 +76,60 @@ export const customerStats = {
   upcomingTrips: 2,
   rewards: 1250,
 };
+
+export const reviews = [
+  { id: 1, customer: "Rahim Ahmed", package: "Cox's Bazar Premium", rating: 5, comment: "Amazing experience! The hotel was wonderful and the guide was very knowledgeable.", date: "2026-02-20", partner: "TravelBD" },
+  { id: 2, customer: "Fatema Begum", package: "Sundarbans Explorer", rating: 4, comment: "Great trip overall. The boat ride was breathtaking. Could improve meal quality.", date: "2026-02-18", partner: "NatureTours" },
+  { id: 3, customer: "Nusrat Jahan", package: "Bandarban Adventure", rating: 5, comment: "Best trekking experience ever! Highly recommend to adventure lovers.", date: "2026-02-15", partner: "AdventureBD" },
+  { id: 4, customer: "Arif Khan", package: "Sajek Valley Retreat", rating: 4, comment: "Beautiful views and peaceful atmosphere. Transport could be better.", date: "2026-02-12", partner: "HillView" },
+  { id: 5, customer: "Salma Akter", package: "Saint Martin Island Tour", rating: 5, comment: "Crystal clear water and fantastic snorkeling. Will definitely come back!", date: "2026-02-10", partner: "IslandEscape" },
+  { id: 6, customer: "Karim Hossain", package: "Cox's Bazar Premium", rating: 3, comment: "Good package but overcrowded during peak season.", date: "2026-02-08", partner: "TravelBD" },
+];
+
+export const myTrips = [
+  { id: 1, package: "Cox's Bazar Premium", partner: "TravelBD", date: "2026-01-15", status: "completed", amount: 12500, rating: 5 },
+  { id: 2, package: "Sundarbans Explorer", partner: "NatureTours", date: "2026-02-10", status: "completed", amount: 18000, rating: 4 },
+  { id: 3, package: "Bandarban Adventure", partner: "AdventureBD", date: "2026-03-15", status: "upcoming", amount: 11000, rating: null },
+  { id: 4, package: "Sajek Valley Retreat", partner: "HillView", date: "2026-03-25", status: "upcoming", amount: 8500, rating: null },
+  { id: 5, package: "Saint Martin Island Tour", partner: "IslandEscape", date: "2025-12-20", status: "completed", amount: 15000, rating: 5 },
+];
+
+export const wishlist = [
+  { id: 1, destination: "Cox's Bazar", image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=400&fit=crop", price: 4500, rating: 4.8, category: "Beach" },
+  { id: 2, destination: "Sajek Valley", image: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600&h=400&fit=crop", price: 5800, rating: 4.9, category: "Hill" },
+  { id: 3, destination: "Saint Martin", image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=600&h=400&fit=crop", price: 7500, rating: 4.7, category: "Island" },
+];
+
+export const analyticsData = {
+  bookingsByMonth: [
+    { month: "Sep", bookings: 280, revenue: 120000 },
+    { month: "Oct", bookings: 420, revenue: 185000 },
+    { month: "Nov", bookings: 510, revenue: 210000 },
+    { month: "Dec", bookings: 680, revenue: 280000 },
+    { month: "Jan", bookings: 590, revenue: 245000 },
+    { month: "Feb", bookings: 750, revenue: 320000 },
+  ],
+  topDestinations: [
+    { name: "Cox's Bazar", bookings: 1240, revenue: 558000 },
+    { name: "Sundarbans", bookings: 890, revenue: 401000 },
+    { name: "Sajek Valley", bookings: 1050, revenue: 472500 },
+    { name: "Saint Martin", bookings: 780, revenue: 351000 },
+    { name: "Bandarban", bookings: 960, revenue: 432000 },
+  ],
+  customerGrowth: [
+    { month: "Sep", customers: 8500 },
+    { month: "Oct", customers: 9200 },
+    { month: "Nov", customers: 9800 },
+    { month: "Dec", customers: 10500 },
+    { month: "Jan", customers: 11200 },
+    { month: "Feb", customers: 12500 },
+  ],
+  partnerEarnings: [
+    { month: "Sep", earnings: 95000 },
+    { month: "Oct", earnings: 142000 },
+    { month: "Nov", earnings: 168000 },
+    { month: "Dec", earnings: 225000 },
+    { month: "Jan", earnings: 198000 },
+    { month: "Feb", earnings: 260000 },
+  ],
+};
