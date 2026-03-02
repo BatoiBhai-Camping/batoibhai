@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import PanelLayout from "@/components/PanelLayout";
 import { StatCard, StatusBadge, PageHeader } from "@/components/StatCard";
 import { customerStats, destinations, packages, bookings } from "@/data/dummyData";
@@ -12,6 +13,7 @@ const categories = ["All", "Beach", "Hill", "Nature", "Island"];
 
 export default function CustomerDashboard() {
   const [activeCategory, setActiveCategory] = useState("All");
+  const navigate = useNavigate();
   const filtered = activeCategory === "All" ? destinations : destinations.filter(d => d.category === activeCategory);
 
   return (
@@ -109,7 +111,7 @@ export default function CustomerDashboard() {
               </div>
               <div className="flex items-center justify-between mt-4 pt-3 border-t">
                 <span className="text-primary font-bold text-lg">৳{pkg.price.toLocaleString()}</span>
-                <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90 text-xs">
+                <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90 text-xs" onClick={() => navigate(`/customer/book?package=${pkg.id}`)}>
                   Book Now
                 </Button>
               </div>
