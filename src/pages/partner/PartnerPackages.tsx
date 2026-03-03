@@ -3,12 +3,12 @@ import { StatusBadge, PageHeader } from "@/components/StatCard";
 import { packages } from "@/data/dummyData";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Users, Clock } from "lucide-react";
+import { Plus, Edit, Trash2, Users, Clock, Eye } from "lucide-react";
 
 export default function PartnerPackages() {
   return (
     <PanelLayout panel="partner">
-      <PageHeader title="My Packages" subtitle="Create and manage your travel packages" />
+      <PageHeader title="My Packages" subtitle="Create and manage your Odisha travel packages" />
 
       <div className="flex justify-end mb-6">
         <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
@@ -44,8 +44,9 @@ export default function PartnerPackages() {
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t">
-              <span className="text-primary font-bold text-xl font-display">৳{pkg.price.toLocaleString()}</span>
+              <span className="text-primary font-bold text-xl font-display">₹{pkg.price.toLocaleString()}</span>
               <div className="flex gap-1">
+                <Button variant="outline" size="sm"><Eye className="w-4 h-4" /></Button>
                 <Button variant="outline" size="sm"><Edit className="w-4 h-4" /></Button>
                 <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
               </div>

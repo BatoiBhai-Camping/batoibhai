@@ -1,35 +1,14 @@
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarTrigger,
-  useSidebar,
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
+  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, useSidebar,
 } from "@/components/ui/sidebar";
 import { NavLink } from "@/components/NavLink";
 import { Avatar } from "@mui/material";
 import {
-  LayoutDashboard,
-  Package,
-  Users,
-  BarChart3,
-  Settings,
-  Map,
-  CalendarCheck,
-  Heart,
-  Wallet,
-  ShieldCheck,
-  Building2,
-  Star,
-  Menu,
-  Compass,
+  LayoutDashboard, Package, Users, BarChart3, Map, CalendarCheck, Heart,
+  Wallet, Building2, Star, Compass, Hotel, Bell, Settings
 } from "lucide-react";
 
 type PanelType = "admin" | "partner" | "customer";
@@ -65,8 +44,8 @@ const customerLinks = [
 
 const panelConfig: Record<PanelType, { links: typeof adminLinks; label: string; user: { name: string; role: string } }> = {
   admin: { links: adminLinks, label: "Administration", user: { name: "Admin User", role: "Super Admin" } },
-  partner: { links: partnerLinks, label: "Partner Portal", user: { name: "TravelBD", role: "Verified Partner" } },
-  customer: { links: customerLinks, label: "Traveler", user: { name: "Rahim Ahmed", role: "Premium Member" } },
+  partner: { links: partnerLinks, label: "Partner Portal", user: { name: "OdishaTourism Pro", role: "Verified Partner" } },
+  customer: { links: customerLinks, label: "Traveler", user: { name: "Rajesh Mohanty", role: "Premium Member" } },
 };
 
 function PanelSidebar({ panel }: { panel: PanelType }) {
@@ -77,7 +56,6 @@ function PanelSidebar({ panel }: { panel: PanelType }) {
   return (
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarContent className="bg-sidebar">
-        {/* Logo */}
         <div className="p-4 flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg gradient-accent flex items-center justify-center text-accent-foreground font-bold text-sm shrink-0">
             BB
@@ -115,7 +93,6 @@ function PanelSidebar({ panel }: { panel: PanelType }) {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* User info at bottom */}
         {!collapsed && (
           <div className="mt-auto p-4 border-t border-sidebar-border">
             <div className="flex items-center gap-3">
