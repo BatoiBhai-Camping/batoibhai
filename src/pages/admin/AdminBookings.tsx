@@ -4,7 +4,7 @@ import { bookings } from "@/data/dummyData";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Filter, Download, Eye } from "lucide-react";
+import { Search, Download, Eye, MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 import { Chip } from "@mui/material";
 
@@ -12,7 +12,10 @@ const statusFilters = ["All", "confirmed", "pending", "cancelled"];
 
 export default function AdminBookings() {
   const [filter, setFilter] = useState("All");
-  const filtered = filter === "All" ? bookings : bookings.filter(b => b.status === filter);
+  const [searchTerm, setSearchTerm] = useState("");
+  const filtered = bookings
+    .filter(b => filter === "All" || b.status === filter)
+    .filter(b => searchTerm === "" || b.customer.toLowerCase().includes(searchTerm.toLowerCase()) || b.id.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <PanelLayout panel="admin">
@@ -21,7 +24,7 @@ export default function AdminBookings() {
       <div className="flex flex-col sm:flex-row gap-4 mb-6 items-start sm:items-center justify-between">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search by ID, customer, or package..." className="pl-10" />
+          <Input placeholder="Search by ID, customer..." className="pl-10" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
         </div>
         <div className="flex gap-2 items-center">
           <div className="flex gap-1.5 flex-wrap">
@@ -54,6 +57,7 @@ export default function AdminBookings() {
                 <th>Package</th>
                 <th>Partner</th>
                 <th>Date</th>
+                <th>Travelers</th>
                 <th>Amount</th>
                 <th>Status</th>
                 <th>Action</th>
@@ -67,10 +71,14 @@ export default function AdminBookings() {
                   <td>{b.package}</td>
                   <td>{b.partner}</td>
                   <td className="text-muted-foreground">{b.date}</td>
-                  <td className="font-semibold">৳{b.amount.toLocaleString()}</td>
+                  <td>{b.travelers}</td>
+                  <td className="font-semibold">₹{b.amount.toLocaleString()}</td>
                   <td><StatusBadge status={b.status} /></td>
                   <td>
-                    <Button variant="ghost" size="sm"><Eye className="w-4 h-4" /></Button>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm"><Eye className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="sm"><MoreHorizontal className="w-4 h-4" /></Button>
+                    </div>
                   </td>
                 </tr>
               ))}

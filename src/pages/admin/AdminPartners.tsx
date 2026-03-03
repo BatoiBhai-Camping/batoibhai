@@ -4,13 +4,13 @@ import { partners } from "@/data/dummyData";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Star, Mail, ExternalLink } from "lucide-react";
+import { Search, Star, Mail, ExternalLink, Phone, MapPin } from "lucide-react";
 import { Avatar } from "@mui/material";
 
 export default function AdminPartners() {
   return (
     <PanelLayout panel="admin">
-      <PageHeader title="Partner Management" subtitle="Manage and verify platform partners" />
+      <PageHeader title="Partner Management" subtitle="Manage and verify Odisha travel partners" />
 
       <div className="flex flex-col sm:flex-row gap-4 mb-6 items-start sm:items-center justify-between">
         <div className="relative flex-1 max-w-md">
@@ -45,7 +45,7 @@ export default function AdminPartners() {
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div className="bg-muted rounded-lg p-3">
                 <p className="text-xs text-muted-foreground">Revenue</p>
-                <p className="font-semibold font-display">৳{(p.revenue / 1000).toFixed(0)}K</p>
+                <p className="font-semibold font-display">₹{(p.revenue / 1000).toFixed(0)}K</p>
               </div>
               <div className="bg-muted rounded-lg p-3">
                 <p className="text-xs text-muted-foreground">Packages</p>
@@ -53,14 +53,16 @@ export default function AdminPartners() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-sm">
+            <div className="space-y-1 text-xs text-muted-foreground mb-3">
+              <p className="flex items-center gap-1"><Mail className="w-3 h-3" /> {p.email}</p>
+              <p className="flex items-center gap-1"><Phone className="w-3 h-3" /> {p.phone}</p>
+            </div>
+
+            <div className="flex items-center justify-between text-sm pt-3 border-t">
               <div className="flex items-center gap-1 text-muted-foreground">
-                <Star className="w-3.5 h-3.5 text-accent fill-accent" /> {p.rating}
+                <Star className="w-3.5 h-3.5 text-accent fill-accent" /> {p.rating} • Joined {p.joined}
               </div>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="sm"><Mail className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="sm"><ExternalLink className="w-4 h-4" /></Button>
-              </div>
+              <Button variant="ghost" size="sm"><ExternalLink className="w-4 h-4" /></Button>
             </div>
           </motion.div>
         ))}

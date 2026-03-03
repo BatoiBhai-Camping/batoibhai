@@ -13,33 +13,31 @@ const COLORS = ["hsl(192, 70%, 28%)", "hsl(32, 95%, 52%)", "hsl(152, 60%, 40%)",
 export default function AdminAnalytics() {
   return (
     <PanelLayout panel="admin">
-      <PageHeader title="Platform Analytics" subtitle="Deep insights into platform performance" />
+      <PageHeader title="Platform Analytics" subtitle="Deep insights into Odisha travel platform performance" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard title="Total Revenue" value={`৳${(adminStats.totalRevenue / 1000).toFixed(0)}K`} change={`${adminStats.growthRate}%`} icon={<DollarSign className="w-5 h-5" />} trend="up" />
+        <StatCard title="Total Revenue" value={`₹${(adminStats.totalRevenue / 100000).toFixed(1)}L`} change={`${adminStats.growthRate}%`} icon={<DollarSign className="w-5 h-5" />} trend="up" />
         <StatCard title="Total Bookings" value={adminStats.totalBookings.toLocaleString()} change="12%" icon={<Package className="w-5 h-5" />} trend="up" />
-        <StatCard title="Total Customers" value={adminStats.totalCustomers.toLocaleString()} change="18%" icon={<Users className="w-5 h-5" />} trend="up" />
+        <StatCard title="Total Customers" value={`${(adminStats.totalCustomers / 1000).toFixed(1)}K`} change="18%" icon={<Users className="w-5 h-5" />} trend="up" />
         <StatCard title="Growth Rate" value={`${adminStats.growthRate}%`} change="vs last quarter" icon={<TrendingUp className="w-5 h-5" />} trend="up" />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6 mb-6">
-        {/* Revenue & Bookings Trend */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-card border rounded-xl p-6">
           <h3 className="font-display font-semibold mb-4">Revenue & Bookings Trend</h3>
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={analyticsData.bookingsByMonth}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(210, 18%, 90%)" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis yAxisId="left" tick={{ fontSize: 12 }} tickFormatter={(v) => `${v / 1000}K`} />
+              <YAxis yAxisId="left" tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 100000).toFixed(1)}L`} />
               <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
-              <Tooltip />
+              <Tooltip formatter={(v: number, name: string) => [name === "revenue" ? `₹${v.toLocaleString()}` : v.toLocaleString(), name === "revenue" ? "Revenue" : "Bookings"]} />
               <Area yAxisId="left" type="monotone" dataKey="revenue" fill="hsl(192, 70%, 28%)" fillOpacity={0.15} stroke="hsl(192, 70%, 28%)" strokeWidth={2} />
               <Line yAxisId="right" type="monotone" dataKey="bookings" stroke="hsl(32, 95%, 52%)" strokeWidth={2} dot={{ r: 4, fill: "hsl(32, 95%, 52%)" }} />
             </AreaChart>
           </ResponsiveContainer>
         </motion.div>
 
-        {/* Customer Growth */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-card border rounded-xl p-6">
           <h3 className="font-display font-semibold mb-4">Customer Growth</h3>
           <ResponsiveContainer width="100%" height={280}>
@@ -55,7 +53,6 @@ export default function AdminAnalytics() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Top Destinations */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="lg:col-span-2 bg-card border rounded-xl p-6">
           <h3 className="font-display font-semibold mb-4">Top Destinations by Bookings</h3>
           <ResponsiveContainer width="100%" height={280}>
@@ -73,15 +70,14 @@ export default function AdminAnalytics() {
           </ResponsiveContainer>
         </motion.div>
 
-        {/* Partner Earnings */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-card border rounded-xl p-6">
           <h3 className="font-display font-semibold mb-4">Partner Earnings</h3>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={analyticsData.partnerEarnings}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(210, 18%, 90%)" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${v / 1000}K`} />
-              <Tooltip formatter={(v: number) => [`৳${v.toLocaleString()}`, "Earnings"]} />
+              <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
+              <Tooltip formatter={(v: number) => [`₹${v.toLocaleString()}`, "Earnings"]} />
               <Bar dataKey="earnings" fill="hsl(32, 95%, 52%)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>

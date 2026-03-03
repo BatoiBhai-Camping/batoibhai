@@ -2,7 +2,7 @@ import PanelLayout from "@/components/PanelLayout";
 import { StatusBadge, PageHeader } from "@/components/StatCard";
 import { myTrips } from "@/data/dummyData";
 import { motion } from "framer-motion";
-import { Star, Calendar, MapPin } from "lucide-react";
+import { Star, Calendar, MapPin, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@mui/material";
 
@@ -12,12 +12,12 @@ export default function CustomerTrips() {
 
   return (
     <PanelLayout panel="customer">
-      <PageHeader title="My Trips" subtitle="Your travel history and upcoming adventures" />
+      <PageHeader title="My Trips" subtitle="Your Odisha travel history and upcoming adventures" />
 
       {upcoming.length > 0 && (
         <>
-          <h3 className="font-display font-semibold text-lg mb-4">Upcoming Trips</h3>
-          <div className="grid sm:grid-cols-2 gap-4 mb-8">
+          <h3 className="font-display font-semibold text-lg mb-4">Upcoming Trips ({upcoming.length})</h3>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
             {upcoming.map((t, i) => (
               <motion.div
                 key={t.id}
@@ -33,10 +33,10 @@ export default function CustomerTrips() {
                 <p className="text-sm text-muted-foreground mb-3">{t.partner}</p>
                 <div className="flex items-center gap-4 text-sm">
                   <span className="flex items-center gap-1 text-muted-foreground"><Calendar className="w-3.5 h-3.5" /> {t.date}</span>
-                  <span className="font-semibold text-primary">৳{t.amount.toLocaleString()}</span>
+                  <span className="font-semibold text-primary">₹{t.amount.toLocaleString()}</span>
                 </div>
                 <div className="mt-3 pt-3 border-t flex gap-2">
-                  <Button size="sm" variant="outline" className="text-xs">View Details</Button>
+                  <Button size="sm" variant="outline" className="text-xs flex-1">View Details</Button>
                   <Button size="sm" variant="ghost" className="text-xs text-destructive">Cancel</Button>
                 </div>
               </motion.div>
@@ -45,7 +45,7 @@ export default function CustomerTrips() {
         </>
       )}
 
-      <h3 className="font-display font-semibold text-lg mb-4">Past Trips</h3>
+      <h3 className="font-display font-semibold text-lg mb-4">Past Trips ({completed.length})</h3>
       <div className="space-y-3">
         {completed.map((t, i) => (
           <motion.div
@@ -62,7 +62,7 @@ export default function CustomerTrips() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <span className="font-semibold">৳{t.amount.toLocaleString()}</span>
+              <span className="font-semibold">₹{t.amount.toLocaleString()}</span>
               {t.rating && (
                 <div className="flex items-center gap-0.5">
                   {[1, 2, 3, 4, 5].map(s => (
@@ -71,6 +71,7 @@ export default function CustomerTrips() {
                 </div>
               )}
               <StatusBadge status={t.status} />
+              <Button variant="ghost" size="sm"><Download className="w-4 h-4" /></Button>
             </div>
           </motion.div>
         ))}

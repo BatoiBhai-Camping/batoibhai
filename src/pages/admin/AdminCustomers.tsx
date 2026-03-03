@@ -4,13 +4,13 @@ import { customers } from "@/data/dummyData";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Download, Eye, Mail } from "lucide-react";
+import { Search, Download, Eye, Mail, MapPin } from "lucide-react";
 import { Avatar } from "@mui/material";
 
 export default function AdminCustomers() {
   return (
     <PanelLayout panel="admin">
-      <PageHeader title="Customer Management" subtitle="View and manage platform customers" />
+      <PageHeader title="Customer Management" subtitle="View and manage platform customers across Odisha" />
 
       <div className="flex flex-col sm:flex-row gap-4 mb-6 items-start sm:items-center justify-between">
         <div className="relative flex-1 max-w-md">
@@ -27,6 +27,8 @@ export default function AdminCustomers() {
               <tr>
                 <th>Customer</th>
                 <th>Email</th>
+                <th>Phone</th>
+                <th>City</th>
                 <th>Total Trips</th>
                 <th>Total Spent</th>
                 <th>Joined</th>
@@ -43,8 +45,10 @@ export default function AdminCustomers() {
                     </div>
                   </td>
                   <td className="text-muted-foreground">{c.email}</td>
+                  <td className="text-muted-foreground text-xs">{c.phone}</td>
+                  <td><span className="badge-info">{c.city}</span></td>
                   <td className="font-semibold">{c.trips}</td>
-                  <td className="font-semibold">৳{c.spent.toLocaleString()}</td>
+                  <td className="font-semibold">₹{c.spent.toLocaleString()}</td>
                   <td className="text-muted-foreground">{c.joined}</td>
                   <td>
                     <div className="flex gap-1">

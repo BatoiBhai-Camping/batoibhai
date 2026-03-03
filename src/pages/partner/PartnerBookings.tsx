@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Eye, CheckCircle, XCircle } from "lucide-react";
 
 export default function PartnerBookings() {
-  const partnerBookings = bookings.filter(b => b.partner === "TravelBD");
+  const partnerBookings = bookings.filter(b => b.partner === "OdishaTourism Pro");
 
   return (
     <PanelLayout panel="partner">
@@ -21,6 +21,7 @@ export default function PartnerBookings() {
                 <th>Customer</th>
                 <th>Package</th>
                 <th>Date</th>
+                <th>Travelers</th>
                 <th>Amount</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -33,7 +34,8 @@ export default function PartnerBookings() {
                   <td className="font-medium">{b.customer}</td>
                   <td>{b.package}</td>
                   <td className="text-muted-foreground">{b.date}</td>
-                  <td className="font-semibold">৳{b.amount.toLocaleString()}</td>
+                  <td>{b.travelers}</td>
+                  <td className="font-semibold">₹{b.amount.toLocaleString()}</td>
                   <td><StatusBadge status={b.status} /></td>
                   <td>
                     <div className="flex gap-1">
