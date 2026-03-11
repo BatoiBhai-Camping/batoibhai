@@ -213,7 +213,7 @@ export default function PanelLayout({ children, panel }: PanelLayoutProps) {
               <Tooltip title="Profile" arrow>
                 <IconButton size="small" onClick={(e) => setProfileAnchor(e.currentTarget)}>
                   <Avatar sx={{ width: 28, height: 28, bgcolor: "hsl(32, 95%, 52%)", fontSize: 12, fontWeight: 700 }}>
-                    {config.user.name[0]}
+                    {displayUser.name[0]}
                   </Avatar>
                 </IconButton>
               </Tooltip>
