@@ -148,8 +148,11 @@ function PanelSidebar({ panel }: { panel: PanelType }) {
 export default function PanelLayout({ children, panel }: PanelLayoutProps) {
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
   const [profileAnchor, setProfileAnchor] = useState<null | HTMLElement>(null);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const config = panelConfig[panel];
   const unreadNotifs = notifications.filter(n => !n.read).length;
+  const displayUser = user || config.user;
 
   return (
     <SidebarProvider>
