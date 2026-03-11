@@ -3,7 +3,12 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import LandingPage from "./pages/LandingPage";
+import LoginPage from "./pages/auth/LoginPage";
+import SignupPage from "./pages/auth/SignupPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminBookings from "./pages/admin/AdminBookings";
 import AdminPartners from "./pages/admin/AdminPartners";
@@ -25,35 +30,40 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          {/* Admin */}
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/bookings" element={<AdminBookings />} />
-          <Route path="/admin/partners" element={<AdminPartners />} />
-          <Route path="/admin/customers" element={<AdminCustomers />} />
-          <Route path="/admin/packages" element={<AdminDashboard />} />
-          <Route path="/admin/analytics" element={<AdminAnalytics />} />
-          {/* Partner */}
-          <Route path="/partner" element={<PartnerDashboard />} />
-          <Route path="/partner/packages" element={<PartnerPackages />} />
-          <Route path="/partner/bookings" element={<PartnerBookings />} />
-          <Route path="/partner/earnings" element={<PartnerEarnings />} />
-          <Route path="/partner/reviews" element={<PartnerReviews />} />
-          {/* Customer */}
-          <Route path="/customer" element={<CustomerDashboard />} />
-          <Route path="/customer/trips" element={<CustomerTrips />} />
-          <Route path="/customer/bookings" element={<CustomerBookings />} />
-          <Route path="/customer/wishlist" element={<CustomerWishlist />} />
-          <Route path="/customer/book" element={<BookingFlow />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            {/* Admin */}
+            <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin/bookings" element={<ProtectedRoute allowedRoles={["admin"]}><AdminBookings /></ProtectedRoute>} />
+            <Route path="/admin/partners" element={<ProtectedRoute allowedRoles={["admin"]}><AdminPartners /></ProtectedRoute>} />
+            <Route path="/admin/customers" element={<ProtectedRoute allowedRoles={["admin"]}><AdminCustomers /></ProtectedRoute>} />
+            <Route path="/admin/packages" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin/analytics" element={<ProtectedRoute allowedRoles={["admin"]}><AdminAnalytics /></ProtectedRoute>} />
+            {/* Partner */}
+            <Route path="/partner" element={<ProtectedRoute allowedRoles={["partner"]}><PartnerDashboard /></ProtectedRoute>} />
+            <Route path="/partner/packages" element={<ProtectedRoute allowedRoles={["partner"]}><PartnerPackages /></ProtectedRoute>} />
+            <Route path="/partner/bookings" element={<ProtectedRoute allowedRoles={["partner"]}><PartnerBookings /></ProtectedRoute>} />
+            <Route path="/partner/earnings" element={<ProtectedRoute allowedRoles={["partner"]}><PartnerEarnings /></ProtectedRoute>} />
+            <Route path="/partner/reviews" element={<ProtectedRoute allowedRoles={["partner"]}><PartnerReviews /></ProtectedRoute>} />
+            {/* Customer */}
+            <Route path="/customer" element={<ProtectedRoute allowedRoles={["customer"]}><CustomerDashboard /></ProtectedRoute>} />
+            <Route path="/customer/trips" element={<ProtectedRoute allowedRoles={["customer"]}><CustomerTrips /></ProtectedRoute>} />
+            <Route path="/customer/bookings" element={<ProtectedRoute allowedRoles={["customer"]}><CustomerBookings /></ProtectedRoute>} />
+            <Route path="/customer/wishlist" element={<ProtectedRoute allowedRoles={["customer"]}><CustomerWishlist /></ProtectedRoute>} />
+            <Route path="/customer/book" element={<ProtectedRoute allowedRoles={["customer"]}><BookingFlow /></ProtectedRoute>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
