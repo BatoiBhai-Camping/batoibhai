@@ -1,5 +1,5 @@
 import { ReactNode, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, useSidebar,
@@ -14,6 +14,7 @@ import {
 import { notifications } from "@/data/dummyData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/contexts/AuthContext";
 
 type PanelType = "admin" | "partner" | "customer";
 
@@ -147,8 +148,11 @@ function PanelSidebar({ panel }: { panel: PanelType }) {
 export default function PanelLayout({ children, panel }: PanelLayoutProps) {
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
   const [profileAnchor, setProfileAnchor] = useState<null | HTMLElement>(null);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const config = panelConfig[panel];
   const unreadNotifs = notifications.filter(n => !n.read).length;
+  const displayUser = user || config.user;
 
   return (
     <SidebarProvider>
@@ -209,7 +213,7 @@ export default function PanelLayout({ children, panel }: PanelLayoutProps) {
               <Tooltip title="Profile" arrow>
                 <IconButton size="small" onClick={(e) => setProfileAnchor(e.currentTarget)}>
                   <Avatar sx={{ width: 28, height: 28, bgcolor: "hsl(32, 95%, 52%)", fontSize: 12, fontWeight: 700 }}>
-                    {config.user.name[0]}
+                    {displayUser.name[0]}
                   </Avatar>
                 </IconButton>
               </Tooltip>
@@ -222,13 +226,13 @@ export default function PanelLayout({ children, panel }: PanelLayoutProps) {
                 anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
               >
                 <div className="px-4 py-3 border-b">
-                  <p className="font-medium text-sm">{config.user.name}</p>
-                  <p className="text-xs text-muted-foreground">{config.user.role}</p>
+                  <p className="font-medium text-sm">{displayUser.name}</p>
+                  <p className="text-xs text-muted-foreground">{displayUser.role || config.user.role}</p>
                 </div>
                 <MenuItem sx={{ fontSize: 13, py: 1 }}><Settings className="w-3.5 h-3.5 mr-2" /> Settings</MenuItem>
                 <MenuItem sx={{ fontSize: 13, py: 1 }}><HelpCircle className="w-3.5 h-3.5 mr-2" /> Help Center</MenuItem>
                 <Divider />
-                <MenuItem sx={{ fontSize: 13, py: 1, color: "hsl(0, 72%, 51%)" }}><LogOut className="w-3.5 h-3.5 mr-2" /> Logout</MenuItem>
+                <MenuItem onClick={() => { logout(); navigate("/"); setProfileAnchor(null); }} sx={{ fontSize: 13, py: 1, color: "hsl(0, 72%, 51%)" }}><LogOut className="w-3.5 h-3.5 mr-2" /> Logout</MenuItem>
               </Menu>
             </div>
           </header>
