@@ -226,13 +226,13 @@ export default function PanelLayout({ children, panel }: PanelLayoutProps) {
                 anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
               >
                 <div className="px-4 py-3 border-b">
-                  <p className="font-medium text-sm">{config.user.name}</p>
-                  <p className="text-xs text-muted-foreground">{config.user.role}</p>
+                  <p className="font-medium text-sm">{displayUser.name}</p>
+                  <p className="text-xs text-muted-foreground">{displayUser.role || config.user.role}</p>
                 </div>
                 <MenuItem sx={{ fontSize: 13, py: 1 }}><Settings className="w-3.5 h-3.5 mr-2" /> Settings</MenuItem>
                 <MenuItem sx={{ fontSize: 13, py: 1 }}><HelpCircle className="w-3.5 h-3.5 mr-2" /> Help Center</MenuItem>
                 <Divider />
-                <MenuItem sx={{ fontSize: 13, py: 1, color: "hsl(0, 72%, 51%)" }}><LogOut className="w-3.5 h-3.5 mr-2" /> Logout</MenuItem>
+                <MenuItem onClick={() => { logout(); navigate("/"); setProfileAnchor(null); }} sx={{ fontSize: 13, py: 1, color: "hsl(0, 72%, 51%)" }}><LogOut className="w-3.5 h-3.5 mr-2" /> Logout</MenuItem>
               </Menu>
             </div>
           </header>
