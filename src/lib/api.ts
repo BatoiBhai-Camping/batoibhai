@@ -8,14 +8,15 @@ async function apiFetch<T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<{ success: boolean; statusCode: number; data: T | null; message: string; errors?: any[] }> {
-  const url = `${API_BASE}${endpoint}`;
-  const config: RequestInit = {
-    ...options,
-    credentials: "include", // Send HTTP-only cookies
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+ const url = `${API_BASE}${endpoint}`;
+
+const config: RequestInit = {
+  ...options,
+  credentials: "include",
+  headers: {
+    ...(options?.headers || {}),
+    "Content-Type": "application/json",
+  },
   };
 
   try {
