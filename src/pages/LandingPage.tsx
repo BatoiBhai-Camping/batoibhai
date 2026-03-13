@@ -16,8 +16,10 @@ import {
   LocalOffer, FlightTakeoff, KeyboardArrowRight
 } from "@mui/icons-material";
 import { destinations, offers, hotels } from "@/data/dummyData";
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { appApi } from "@/lib/api";
+import { useApi } from "@/hooks/useApi";
 
 const travelTypes = [
   { icon: <Palmtree className="w-5 h-5" />, label: "Holidays", active: true },
