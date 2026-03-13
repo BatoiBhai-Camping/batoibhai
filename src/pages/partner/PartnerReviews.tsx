@@ -1,7 +1,7 @@
 import { useState } from "react";
 import PanelLayout from "@/components/PanelLayout";
 import { PageHeader } from "@/components/StatCard";
-import { reviews } from "@/data/dummyData";
+import { usePartnerData } from "@/hooks/useBackendData";
 import { motion } from "framer-motion";
 import { Star, MessageSquare, ThumbsUp, Send, TrendingUp } from "lucide-react";
 import { Avatar, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, LinearProgress, Tooltip, IconButton } from "@mui/material";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export default function PartnerReviews() {
+  const { reviews } = usePartnerData();
   const partnerReviews = reviews.filter(r => r.partner === "OdishaTourism Pro");
   const avgRating = partnerReviews.length ? (partnerReviews.reduce((a, r) => a + r.rating, 0) / partnerReviews.length).toFixed(1) : "0";
   const [replyDialog, setReplyDialog] = useState<typeof reviews[0] | null>(null);

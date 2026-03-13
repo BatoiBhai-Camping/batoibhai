@@ -11,7 +11,8 @@ import {
   Wallet, Building2, Star, Compass, Hotel, Bell, Settings, LogOut,
   Search, Moon, Sun, ChevronDown, HelpCircle
 } from "lucide-react";
-import { notifications } from "@/data/dummyData";
+import { useAdminData, usePartnerData } from "@/hooks/useBackendData";
+import { notifications as fallbackNotifications } from "@/data/dummyData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
@@ -146,6 +147,9 @@ function PanelSidebar({ panel }: { panel: PanelType }) {
 }
 
 export default function PanelLayout({ children, panel }: PanelLayoutProps) {
+  const adminData = useAdminData();
+  const partnerData = usePartnerData();
+  const notifications = panel === "admin" ? adminData.notifications : panel === "partner" ? partnerData.notifications : fallbackNotifications;
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
   const [profileAnchor, setProfileAnchor] = useState<null | HTMLElement>(null);
   const { user, logout } = useAuth();

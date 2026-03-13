@@ -2,6 +2,7 @@ import { useState } from "react";
 import PanelLayout from "@/components/PanelLayout";
 import { StatusBadge, PageHeader, DataTablePagination } from "@/components/StatCard";
 import { bookings } from "@/data/dummyData";
+import { usePublicData } from "@/hooks/useBackendData";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Eye, Download, MessageSquare, Search, FileText } from "lucide-react";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Chip, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, Avatar, Tooltip, IconButton } from "@mui/material";
 
 export default function CustomerBookings() {
+  usePublicData();
   const myBookings = bookings.filter(b => b.customer === "Rajesh Mohanty" || b.customer === "Bikash Das");
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);

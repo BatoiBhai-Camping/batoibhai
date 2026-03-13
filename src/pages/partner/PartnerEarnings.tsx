@@ -1,7 +1,7 @@
 import { useState } from "react";
 import PanelLayout from "@/components/PanelLayout";
 import { StatCard, PageHeader } from "@/components/StatCard";
-import { partnerStats, analyticsData } from "@/data/dummyData";
+import { usePartnerData } from "@/hooks/useBackendData";
 import { motion } from "framer-motion";
 import { Wallet, TrendingUp, Clock, ArrowUpRight, Download, DollarSign, BanknoteIcon } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer } from "recharts";
@@ -16,6 +16,7 @@ const transactions = [
 ];
 
 export default function PartnerEarnings() {
+  const { partnerStats, analyticsData } = usePartnerData();
   const [payoutDialog, setPayoutDialog] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: "" });
 
