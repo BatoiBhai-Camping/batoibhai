@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import PanelLayout from "@/components/PanelLayout";
 import { PageHeader, DataTablePagination } from "@/components/StatCard";
 import { customers } from "@/data/dummyData";
@@ -7,8 +7,27 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Download, Eye, Mail, MapPin, Phone, User, Wallet, TrendingUp } from "lucide-react";
 import { Avatar, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, Chip, Tooltip, IconButton } from "@mui/material";
+import { adminApi } from "@/lib/api";
+import { useApi } from "@/hooks/useApi";
 
 export default function AdminCustomers() {
+  // Fetch users from API with fallback
+  const fetchUsers = useCallback(() => adminApi.getAllUsers(), []);
+  const { data: apiUsers } = useApi(fetchUsers, null);
+
+  // Map API users to the format used by the UI
+  const customerList = apiUsers
+    ? (apiUsers as any[]).map((u: any) => ({
+        id: u.id,
+        name: u.fullName || "Unknown",
+        email: u.email || "",
+        phone: u.phone || "",
+        trips: 0,
+        spent: 0,
+        joined: u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "",
+        city: "Odisha",
+      }))
+    : customers;
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [selectedCustomer, setSelectedCustomer] = useState<typeof customers[0] | null>(null);

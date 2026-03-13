@@ -132,8 +132,8 @@ export default function AdminPartners() {
                   <IconButton size="small" onClick={() => setSelectedPartner(p)}><Eye className="w-3.5 h-3.5" /></IconButton>
                 </Tooltip>
                 {p.status === "pending" && (
-                  <Tooltip title="Verify Partner" arrow>
-                    <IconButton size="small" sx={{ color: "hsl(152,60%,40%)" }} onClick={() => setSnackbar({ open: true, message: `${p.name} verified successfully!`, severity: "success" })}>
+                  <Tooltip title="Approve Agent" arrow>
+                    <IconButton size="small" sx={{ color: "hsl(152,60%,40%)" }} onClick={() => handleApproveAgent(p.id, p.name)}>
                       <CheckCircle className="w-3.5 h-3.5" />
                     </IconButton>
                   </Tooltip>
