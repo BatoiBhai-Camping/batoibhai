@@ -5,17 +5,17 @@ import {
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, useSidebar,
 } from "@/components/ui/sidebar";
 import { NavLink } from "@/components/NavLink";
-import { Avatar, Badge, IconButton, Tooltip, Menu, MenuItem, Divider } from "@mui/material";
+import { Avatar, Badge, IconButton, Tooltip, Menu, MenuItem, Divider, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Snackbar, Alert } from "@mui/material";
 import {
   LayoutDashboard, Package, Users, BarChart3, Map, CalendarCheck, Heart,
-  Wallet, Building2, Star, Compass, Hotel, Bell, Settings, LogOut,
-  Search, Moon, Sun, ChevronDown, HelpCircle
+  Wallet, Building2, Star, Compass, Bell, Settings, LogOut,
+  Search, HelpCircle, Trash2
 } from "lucide-react";
 import { useAdminData, usePartnerData } from "@/hooks/useBackendData";
 import { notifications as fallbackNotifications } from "@/data/dummyData";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
+import { adminApi, agentApi, userApi } from "@/lib/api";
 
 type PanelType = "admin" | "partner" | "customer";
 
@@ -98,7 +98,6 @@ function PanelSidebar({ panel }: { panel: PanelType }) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
       </SidebarContent>
     </Sidebar>
   );
@@ -110,11 +109,74 @@ export default function PanelLayout({ children, panel }: PanelLayoutProps) {
   const notifications = panel === "admin" ? adminData.notifications : panel === "partner" ? partnerData.notifications : fallbackNotifications;
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
   const [profileAnchor, setProfileAnchor] = useState<null | HTMLElement>(null);
-  const { user, logout } = useAuth();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
+
+  const { user, logout, refreshProfile, updateProfile } = useAuth();
   const navigate = useNavigate();
   const config = panelConfig[panel];
   const unreadNotifs = notifications.filter(n => !n.read).length;
   const displayUser = user || config.user;
+
+  const [form, setForm] = useState({
+    fullName: displayUser.name || "",
+    phone: user?.phone || "",
+    profileImageUrl: user?.avatar || "",
+  });
+
+  const handleOpenSettings = () => {
+    setForm({
+      fullName: displayUser.name || "",
+      phone: user?.phone || "",
+      profileImageUrl: user?.avatar || "",
+    });
+    setProfileAnchor(null);
+    setSettingsOpen(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      let res;
+      if (user.role === "customer") {
+        res = await userApi.updateProfile({ fullName: form.fullName, phone: form.phone, profileImageUrl: form.profileImageUrl });
+      } else if (user.role === "partner") {
+        res = await agentApi.updateProfile({ fullName: form.fullName, phone: form.phone, profileImageUrl: form.profileImageUrl });
+      } else {
+        res = await adminApi.updateProfile({ fullName: form.fullName, phone: form.phone, profileImageUrl: form.profileImageUrl });
+      }
+
+      if (!res?.success) {
+        setSnackbar({ open: true, message: res?.message || "Profile update failed", severity: "error" });
+        return;
+      }
+
+      updateProfile({ name: form.fullName, phone: form.phone, avatar: form.profileImageUrl });
+      await refreshProfile();
+      setSettingsOpen(false);
+      setSnackbar({ open: true, message: "Profile updated successfully", severity: "success" });
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error?.message || "Unable to update profile", severity: "error" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user || user.role !== "customer") return;
+    const ok = window.confirm("Delete your account permanently?");
+    if (!ok) return;
+
+    const res = await userApi.deleteAccount();
+    if (!res?.success) {
+      setSnackbar({ open: true, message: res?.message || "Delete account failed", severity: "error" });
+      return;
+    }
+    await logout();
+    navigate("/login");
+  };
 
   return (
     <SidebarProvider>
@@ -191,7 +253,7 @@ export default function PanelLayout({ children, panel }: PanelLayoutProps) {
                   <p className="font-medium text-sm">{displayUser.name}</p>
                   <p className="text-xs text-muted-foreground">{displayUser.role || config.user.role}</p>
                 </div>
-                <MenuItem sx={{ fontSize: 13, py: 1 }}><Settings className="w-3.5 h-3.5 mr-2" /> Settings</MenuItem>
+                <MenuItem onClick={handleOpenSettings} sx={{ fontSize: 13, py: 1 }}><Settings className="w-3.5 h-3.5 mr-2" /> Settings</MenuItem>
                 <MenuItem sx={{ fontSize: 13, py: 1 }}><HelpCircle className="w-3.5 h-3.5 mr-2" /> Help Center</MenuItem>
                 <Divider />
                 <MenuItem onClick={() => { logout(); navigate("/"); setProfileAnchor(null); }} sx={{ fontSize: 13, py: 1, color: "hsl(0, 72%, 51%)" }}><LogOut className="w-3.5 h-3.5 mr-2" /> Logout</MenuItem>
@@ -204,6 +266,45 @@ export default function PanelLayout({ children, panel }: PanelLayoutProps) {
           </main>
         </div>
       </div>
+
+      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Profile Settings</DialogTitle>
+        <DialogContent className="space-y-4" sx={{ pt: "12px !important" }}>
+          <TextField
+            label="Full Name"
+            fullWidth
+            value={form.fullName}
+            onChange={(e) => setForm((prev) => ({ ...prev, fullName: e.target.value }))}
+          />
+          <TextField
+            label="Phone"
+            fullWidth
+            value={form.phone}
+            onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+          />
+          <TextField
+            label="Profile Image URL"
+            fullWidth
+            value={form.profileImageUrl}
+            onChange={(e) => setForm((prev) => ({ ...prev, profileImageUrl: e.target.value }))}
+          />
+          {user?.role === "customer" && (
+            <Button variant="outline" className="w-full text-destructive border-destructive/30" onClick={handleDeleteAccount}>
+              <Trash2 className="w-4 h-4 mr-2" /> Delete Account
+            </Button>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button variant="outline" onClick={() => setSettingsOpen(false)}>Cancel</Button>
+          <Button onClick={handleSaveProfile} disabled={saving} className="bg-primary text-primary-foreground">
+            {saving ? "Saving..." : "Save Changes"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar((s) => ({ ...s, open: false }))}>
+        <Alert severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
+      </Snackbar>
     </SidebarProvider>
   );
 }
