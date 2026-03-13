@@ -30,12 +30,12 @@ export default function AdminCustomers() {
     : customers;
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
-  const [selectedCustomer, setSelectedCustomer] = useState<typeof customers[0] | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: "" });
   const [sortBy, setSortBy] = useState<"trips" | "spent">("spent");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  const filtered = customers
+  const filtered = customerList
     .filter(c => searchTerm === "" || c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.email.toLowerCase().includes(searchTerm.toLowerCase()) || c.city.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => sortDir === "desc" ? (b[sortBy] as number) - (a[sortBy] as number) : (a[sortBy] as number) - (b[sortBy] as number));
 
