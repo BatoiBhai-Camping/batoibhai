@@ -78,7 +78,7 @@ export default function AdminCustomers() {
         </div>
         <div className="bg-card border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Avg. Spend/Customer</p>
-          <p className="text-2xl font-bold font-display mt-1">₹{(totalSpent / customers.length / 1000).toFixed(1)}K</p>
+          <p className="text-2xl font-bold font-display mt-1">₹{(totalSpent / (customerList.length || 1) / 1000).toFixed(1)}K</p>
         </div>
       </div>
 
