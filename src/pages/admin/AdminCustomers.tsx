@@ -55,8 +55,8 @@ export default function AdminCustomers() {
     else { setSortBy(col); setSortDir("desc"); }
   };
 
-  const totalSpent = customers.reduce((a, c) => a + c.spent, 0);
-  const totalTrips = customers.reduce((a, c) => a + c.trips, 0);
+  const totalSpent = customerList.reduce((a, c) => a + c.spent, 0);
+  const totalTrips = customerList.reduce((a, c) => a + c.trips, 0);
 
   return (
     <PanelLayout panel="admin">
