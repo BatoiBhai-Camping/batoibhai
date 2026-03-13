@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import PanelLayout from "@/components/PanelLayout";
 import { PageHeader } from "@/components/StatCard";
 import { usePublicData } from "@/hooks/useBackendData";
+import { paymentApi } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,31 @@ const paymentMethods = [
   { id: "DebitCard", label: "Debit Card", icon: CreditCard, desc: "Visa, Mastercard, RuPay" },
   { id: "CreditCard", label: "Credit Card", icon: Globe, desc: "No-cost EMI available" },
 ];
+type PaymentOrderData = {
+  orderId: string;
+  amount: number;
+  currency: string;
+  bookingId: string;
+  bookingCode: string;
+  paymentId: string;
+  packageTitle: string;
+  numberOfTravelers: number;
+  razorpayKeyId: string;
+};
+
+const loadRazorpayScript = () =>
+  new Promise<boolean>((resolve) => {
+    if ((window as any).Razorpay) {
+      resolve(true);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
 
 export default function BookingFlow() {
   const { packages, offers } = usePublicData();
@@ -42,6 +68,8 @@ export default function BookingFlow() {
   const [paymentMethod, setPaymentMethod] = useState("UPI");
   const [formData, setFormData] = useState({ name: "", email: "", phone: "", specialRequests: "", idType: "Aadhaar", idNumber: "" });
   const [booked, setBooked] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [confirmedBooking, setConfirmedBooking] = useState<PaymentOrderData | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "error" as "error" | "success" });
 
@@ -69,15 +97,92 @@ export default function BookingFlow() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!validateStep()) return;
-    if (activeStep < 2) setActiveStep(a => a + 1);
-    else setBooked(true);
+
+    if (activeStep < 2) {
+      setActiveStep(a => a + 1);
+      return;
+    }
+
+    const scriptLoaded = await loadRazorpayScript();
+    if (!scriptLoaded) {
+      setSnackbar({ open: true, message: "Failed to load Razorpay SDK", severity: "error" });
+      return;
+    }
+
+    setProcessingPayment(true);
+
+    try {
+      const createOrderRes = await paymentApi.createOrder({
+        packageId: String((selectedPackage as any).apiId || selectedPackage.id),
+        numberOfTravelers: travelers,
+      });
+
+      if (!createOrderRes.success || !createOrderRes.data) {
+        setSnackbar({ open: true, message: createOrderRes.message || "Failed to create order", severity: "error" });
+        setProcessingPayment(false);
+        return;
+      }
+
+      const orderData = createOrderRes.data as PaymentOrderData;
+      const RazorpayCtor = (window as any).Razorpay;
+      const razorpay = new RazorpayCtor({
+        key: orderData.razorpayKeyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "BatoiBhai",
+        description: `Booking for ${orderData.packageTitle}`,
+        order_id: orderData.orderId,
+        handler: async (response: any) => {
+          const verifyRes = await paymentApi.verifyPayment({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            bookingId: orderData.bookingId,
+            paymentId: orderData.paymentId,
+          });
+
+          if (!verifyRes.success) {
+            setSnackbar({ open: true, message: verifyRes.message || "Payment verification failed", severity: "error" });
+            setProcessingPayment(false);
+            return;
+          }
+
+          setConfirmedBooking(orderData);
+          setBooked(true);
+          setProcessingPayment(false);
+          setSnackbar({ open: true, message: "Payment successful and booking confirmed", severity: "success" });
+        },
+        prefill: {
+          name: formData.name,
+          email: formData.email,
+          contact: formData.phone,
+        },
+        notes: {
+          bookingId: orderData.bookingId,
+          packageId: String((selectedPackage as any).apiId || selectedPackage.id),
+          travelers: String(travelers),
+        },
+        theme: { color: "#0B5A75" },
+        modal: {
+          ondismiss: () => {
+            setProcessingPayment(false);
+            setSnackbar({ open: true, message: "Payment cancelled", severity: "error" });
+          },
+        },
+      });
+
+      razorpay.open();
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error?.message || "Unable to process payment", severity: "error" });
+      setProcessingPayment(false);
+    }
   };
   const handleBack = () => setActiveStep(a => a - 1);
 
   if (booked) {
-    const bookingId = `BK-${String(Math.floor(Math.random() * 9000 + 1000))}`;
+    const bookingId = confirmedBooking?.bookingCode || `BK-${String(Math.floor(Math.random() * 9000 + 1000))}`;
     return (
       <PanelLayout panel="customer">
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -299,9 +404,9 @@ export default function BookingFlow() {
             <Button variant="outline" onClick={handleBack} disabled={activeStep === 0}>
               <ArrowLeft className="w-4 h-4 mr-1" /> Back
             </Button>
-            <Button onClick={handleNext} className="bg-primary text-primary-foreground hover:bg-primary/90 px-8">
+            <Button onClick={handleNext} disabled={processingPayment} className="bg-primary text-primary-foreground hover:bg-primary/90 px-8">
               {activeStep === 2 ? (
-                <><Shield className="w-4 h-4 mr-1" /> Confirm & Pay ₹{totalPrice.toLocaleString()}</>
+                <><Shield className="w-4 h-4 mr-1" /> {processingPayment ? "Processing..." : `Confirm & Pay ₹${totalPrice.toLocaleString()}`}</>
               ) : (
                 <>Continue <ArrowRight className="w-4 h-4 ml-1" /></>
               )}

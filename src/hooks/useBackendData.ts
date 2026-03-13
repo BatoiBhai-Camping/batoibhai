@@ -26,9 +26,12 @@ export function usePublicData() {
 
   const packageList = useMemo(() => {
     const list = toArray<any>(data, []);
-    if (!list.length) return fallbackPackages;
+    if (!list.length) {
+      return fallbackPackages.map((p: any, idx: number) => ({ ...p, id: idx + 1, apiId: String(p.id || idx + 1) }));
+    }
     return list.map((p: any, idx: number) => ({
-      id: p.id || idx + 1,
+      id: idx + 1,
+      apiId: String(p.id || idx + 1),
       name: p.title || p.name || "Untitled Package",
       duration: `${p.durationDays || 1} Days`,
       price: Number(p.pricePerPerson || p.price || 0),
