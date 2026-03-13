@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import PanelLayout from "@/components/PanelLayout";
 import { StatusBadge, PageHeader } from "@/components/StatCard";
 import { packages } from "@/data/dummyData";
@@ -8,15 +8,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Edit, Trash2, Users, Clock, Eye, Package, Search } from "lucide-react";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, Tooltip, IconButton, Chip } from "@mui/material";
+import { agentApi } from "@/lib/api";
+import { useApi } from "@/hooks/useApi";
 
 export default function PartnerPackages() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
-  const [editPkg, setEditPkg] = useState<typeof packages[0] | null>(null);
+  const [editPkg, setEditPkg] = useState<any>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "warning" | "info" });
   const [searchTerm, setSearchTerm] = useState("");
 
-  const filtered = packages.filter(p => searchTerm === "" || p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  // Fetch agent packages from API
+  const fetchPackages = useCallback(() => agentApi.getAllPackages(), []);
+  const { data: apiPackages, refetch } = useApi(fetchPackages, null);
+
+  // Map API packages to UI format, fallback to dummy
+  const packageList = apiPackages
+    ? (apiPackages as any[]).map((p: any) => ({
+        id: p.id,
+        name: p.title || "Untitled Package",
+        duration: `${p.durationDays || 0} Days`,
+        price: p.pricePerPerson || 0,
+        maxPeople: p.totalSeats || 0,
+        includes: p.tags || [],
+        partner: "",
+        status: (p.packageApprovedStatus || "PENDING").toLowerCase() === "approved" ? "active" : "pending",
+      }))
+    : packages;
+
+  const filtered = packageList.filter(p => searchTerm === "" || p.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <PanelLayout panel="partner">

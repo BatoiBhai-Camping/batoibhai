@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import PanelLayout from "@/components/PanelLayout";
 import { StatusBadge, PageHeader } from "@/components/StatCard";
 import { partners } from "@/data/dummyData";
@@ -8,17 +8,48 @@ import { Button } from "@/components/ui/button";
 import { Search, Star, Mail, ExternalLink, Phone, MapPin, Plus, CheckCircle, XCircle, Eye, Edit } from "lucide-react";
 import { Avatar, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, Tooltip, IconButton, LinearProgress } from "@mui/material";
 import { Label } from "@/components/ui/label";
+import { adminApi } from "@/lib/api";
+import { useApi } from "@/hooks/useApi";
 
 export default function AdminPartners() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedPartner, setSelectedPartner] = useState<typeof partners[0] | null>(null);
+  const [selectedPartner, setSelectedPartner] = useState<any>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "warning" });
 
-  const filtered = partners
+  // Fetch agents from API with fallback to dummy data
+  const fetchAgents = useCallback(() => adminApi.getAllAgents(), []);
+  const { data: apiAgents, isLoading: loadingAgents } = useApi(fetchAgents, null);
+
+  // Map API agents to the format used by the UI, or use dummy data
+  const partnerList = apiAgents
+    ? (apiAgents as any[]).map((a: any) => ({
+        id: a.id || a.userId,
+        name: a.companyName || a.fullName || "Unknown",
+        owner: a.fullName || "",
+        email: a.email || "",
+        phone: a.phone || "",
+        packages: 0,
+        revenue: 0,
+        rating: 0,
+        status: (a.status || "PENDING").toLowerCase() === "approved" ? "verified" : "pending",
+        joined: a.createdAt ? new Date(a.createdAt).toLocaleDateString() : "",
+      }))
+    : partners;
+
+  const filtered = partnerList
     .filter(p => statusFilter === "all" || p.status === statusFilter)
     .filter(p => searchTerm === "" || p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.owner.toLowerCase().includes(searchTerm.toLowerCase()));
+
+  const handleApproveAgent = async (agentId: string, name: string) => {
+    const result = await adminApi.approveAgent(agentId);
+    if (result.success) {
+      setSnackbar({ open: true, message: `${name} approved successfully!`, severity: "success" });
+    } else {
+      setSnackbar({ open: true, message: result.message || "Failed to approve", severity: "warning" });
+    }
+  };
 
   return (
     <PanelLayout panel="admin">
@@ -101,8 +132,8 @@ export default function AdminPartners() {
                   <IconButton size="small" onClick={() => setSelectedPartner(p)}><Eye className="w-3.5 h-3.5" /></IconButton>
                 </Tooltip>
                 {p.status === "pending" && (
-                  <Tooltip title="Verify Partner" arrow>
-                    <IconButton size="small" sx={{ color: "hsl(152,60%,40%)" }} onClick={() => setSnackbar({ open: true, message: `${p.name} verified successfully!`, severity: "success" })}>
+                  <Tooltip title="Approve Agent" arrow>
+                    <IconButton size="small" sx={{ color: "hsl(152,60%,40%)" }} onClick={() => handleApproveAgent(p.id, p.name)}>
                       <CheckCircle className="w-3.5 h-3.5" />
                     </IconButton>
                   </Tooltip>

@@ -16,8 +16,10 @@ import {
   LocalOffer, FlightTakeoff, KeyboardArrowRight
 } from "@mui/icons-material";
 import { destinations, offers, hotels } from "@/data/dummyData";
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { appApi } from "@/lib/api";
+import { useApi } from "@/hooks/useApi";
 
 const travelTypes = [
   { icon: <Palmtree className="w-5 h-5" />, label: "Holidays", active: true },
@@ -54,6 +56,10 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const heroRef = useRef<HTMLDivElement>(null);
+
+  // Fetch real packages from API
+  const fetchPackages = useCallback(() => appApi.getAllPackages(), []);
+  const { data: apiPackages } = useApi(fetchPackages, null);
 
   const getDashboardLink = () => {
     if (!isAuthenticated || !user) return "/login";

@@ -1,21 +1,20 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, UserRole } from "@/contexts/AuthContext";
 import {
   TextField, Button as MuiButton, Alert, CircularProgress, IconButton, InputAdornment,
-  Divider, Chip, Avatar, Paper, Box, Typography, Tabs, Tab
+  Divider, Chip, Avatar, Paper, Box, Typography, ToggleButtonGroup, ToggleButton
 } from "@mui/material";
 import {
   Visibility, VisibilityOff, Email, Lock, AdminPanelSettings,
   Handshake, Person, TravelExplore
 } from "@mui/icons-material";
-import { Palmtree } from "lucide-react";
 
-const demoAccounts = [
-  { label: "Admin", email: "admin@batoibhai.com", password: "admin123", icon: <AdminPanelSettings />, color: "#1565c0" },
-  { label: "Partner", email: "partner@batoibhai.com", password: "partner123", icon: <Handshake />, color: "#2e7d32" },
-  { label: "Customer", email: "customer@batoibhai.com", password: "customer123", icon: <Person />, color: "#e65100" },
+const roleOptions: { value: UserRole; label: string; icon: React.ReactElement; apiLabel: string }[] = [
+  { value: "customer", label: "Traveler", icon: <TravelExplore />, apiLabel: "TRAVELER" },
+  { value: "partner", label: "Agent", icon: <Handshake />, apiLabel: "AGENT" },
+  { value: "admin", label: "Admin", icon: <AdminPanelSettings />, apiLabel: "ADMIN" },
 ];
 
 export default function LoginPage() {
@@ -26,34 +25,28 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loginAs, setLoginAs] = useState<UserRole>("customer");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState(0);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    const result = await login(email, password);
+
+    if (!email || !password) {
+      setError("Please fill in all fields");
+      return;
+    }
+
+    const result = await login(email, password, loginAs);
     if (result.success) {
-      // Navigate to the appropriate dashboard based on role or original location
       if (from) {
         navigate(from, { replace: true });
       } else {
-        const entry = demoAccounts.find(d => d.email === email.toLowerCase());
-        navigate(entry ? `/${entry.label.toLowerCase()}` : "/customer", { replace: true });
+        navigate(`/${loginAs}`, { replace: true });
       }
     } else {
       setError(result.error || "Login failed");
-    }
-  };
-
-  const quickLogin = async (account: typeof demoAccounts[0]) => {
-    setEmail(account.email);
-    setPassword(account.password);
-    setError("");
-    const result = await login(account.email, account.password);
-    if (result.success) {
-      navigate(`/${account.label.toLowerCase()}`, { replace: true });
     }
   };
 
@@ -124,9 +117,40 @@ export default function LoginPage() {
           <Typography variant="h4" sx={{ fontFamily: "'Plus Jakarta Sans'", fontWeight: 800, mb: 1 }}>
             Welcome back
           </Typography>
-          <Typography variant="body2" sx={{ color: "hsl(210,10%,50%)", mb: 4 }}>
+          <Typography variant="body2" sx={{ color: "hsl(210,10%,50%)", mb: 3 }}>
             Sign in to continue your journey
           </Typography>
+
+          {/* Role Selector */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="caption" sx={{ fontWeight: 600, mb: 1, display: "block", color: "hsl(210,10%,50%)" }}>
+              Login as:
+            </Typography>
+            <Box sx={{ display: "flex", gap: 1 }}>
+              {roleOptions.map((r) => (
+                <MuiButton
+                  key={r.value}
+                  variant={loginAs === r.value ? "contained" : "outlined"}
+                  size="small"
+                  startIcon={r.icon}
+                  onClick={() => setLoginAs(r.value)}
+                  sx={{
+                    flex: 1,
+                    textTransform: "none",
+                    borderRadius: 2,
+                    fontWeight: 600,
+                    fontSize: 12,
+                    py: 1,
+                    ...(loginAs === r.value
+                      ? { bgcolor: "hsl(192,70%,28%)", "&:hover": { bgcolor: "hsl(192,70%,22%)" } }
+                      : {}),
+                  }}
+                >
+                  {r.label}
+                </MuiButton>
+              ))}
+            </Box>
+          </Box>
 
           {error && (
             <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setError("")}>
@@ -197,39 +221,9 @@ export default function LoginPage() {
                 "&:hover": { bgcolor: "hsl(192, 70%, 22%)" },
               }}
             >
-              {isLoading ? <CircularProgress size={22} sx={{ color: "white" }} /> : "Sign In"}
+              {isLoading ? <CircularProgress size={22} sx={{ color: "white" }} /> : `Sign In as ${roleOptions.find(r => r.value === loginAs)?.label}`}
             </MuiButton>
           </form>
-
-          <Divider sx={{ my: 3 }}>
-            <Typography variant="caption" sx={{ color: "hsl(210,10%,50%)" }}>Quick Demo Login</Typography>
-          </Divider>
-
-          <Box sx={{ display: "flex", gap: 1.5 }}>
-            {demoAccounts.map((acc) => (
-              <MuiButton
-                key={acc.label}
-                fullWidth
-                variant="outlined"
-                size="small"
-                onClick={() => quickLogin(acc)}
-                disabled={isLoading}
-                startIcon={acc.icon}
-                sx={{
-                  textTransform: "none",
-                  borderRadius: 2,
-                  fontWeight: 600,
-                  fontSize: 12,
-                  py: 1,
-                  borderColor: acc.color,
-                  color: acc.color,
-                  "&:hover": { bgcolor: `${acc.color}10`, borderColor: acc.color },
-                }}
-              >
-                {acc.label}
-              </MuiButton>
-            ))}
-          </Box>
 
           <Typography variant="body2" sx={{ mt: 4, textAlign: "center", color: "hsl(210,10%,50%)" }}>
             Don't have an account?{" "}
