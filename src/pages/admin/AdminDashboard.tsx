@@ -1,7 +1,7 @@
 import { useState } from "react";
 import PanelLayout from "@/components/PanelLayout";
 import { StatCard, StatusBadge, PageHeader } from "@/components/StatCard";
-import { adminStats, bookings, partners, revenueData, notifications } from "@/data/dummyData";
+import { useAdminData } from "@/hooks/useBackendData";
 import { BarChart3, Users, Package, DollarSign, TrendingUp, Building2, Bell, AlertCircle, Download, RefreshCcw, Eye } from "lucide-react";
 import { motion } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer } from "recharts";
@@ -17,6 +17,7 @@ const quickActions = [
 ];
 
 export default function AdminDashboard() {
+  const { adminStats, bookings, partners, revenueData, notifications } = useAdminData();
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
 

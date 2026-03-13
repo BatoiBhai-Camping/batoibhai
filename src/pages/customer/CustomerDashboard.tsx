@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PanelLayout from "@/components/PanelLayout";
 import { StatCard, PageHeader } from "@/components/StatCard";
-import { customerStats, destinations, packages, offers, hotels } from "@/data/dummyData";
+import { usePublicData } from "@/hooks/useBackendData";
+import { customerStats } from "@/data/dummyData";
 import { Map, Wallet, Heart, CalendarCheck, Star, MapPin, Users, Search, Hotel, Tag, Percent, Filter, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import { Chip, Snackbar, Alert, Tooltip, Rating } from "@mui/material";
 const categories = ["All", "Beach", "Hill", "Nature", "Heritage", "Wildlife"];
 
 export default function CustomerDashboard() {
+  const { destinations, packages, offers, hotels } = usePublicData();
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [wishlistedIds, setWishlistedIds] = useState<Set<number>>(new Set([1, 3]));

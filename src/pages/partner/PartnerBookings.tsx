@@ -1,7 +1,7 @@
 import { useState } from "react";
 import PanelLayout from "@/components/PanelLayout";
 import { StatusBadge, PageHeader, DataTablePagination } from "@/components/StatCard";
-import { bookings } from "@/data/dummyData";
+import { usePartnerData } from "@/hooks/useBackendData";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Eye, CheckCircle, XCircle, Search, MessageSquare } from "lucide-react";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Chip, Snackbar, Alert, Tooltip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Avatar } from "@mui/material";
 
 export default function PartnerBookings() {
+  const { bookings } = usePartnerData();
   const partnerBookings = bookings.filter(b => b.partner === "OdishaTourism Pro");
   const [filter, setFilter] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");

@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import PanelLayout from "@/components/PanelLayout";
 import { StatusBadge, PageHeader } from "@/components/StatCard";
-import { packages } from "@/data/dummyData";
+import { usePartnerData } from "@/hooks/useBackendData";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { agentApi } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
 
 export default function PartnerPackages() {
+  const { packages } = usePartnerData();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [editPkg, setEditPkg] = useState<any>(null);

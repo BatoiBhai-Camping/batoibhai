@@ -1,7 +1,7 @@
 import { useState } from "react";
 import PanelLayout from "@/components/PanelLayout";
 import { StatCard, PageHeader } from "@/components/StatCard";
-import { adminStats, analyticsData } from "@/data/dummyData";
+import { useAdminData } from "@/hooks/useBackendData";
 import { motion } from "framer-motion";
 import { TrendingUp, Users, Package, DollarSign, Download, Calendar } from "lucide-react";
 import {
@@ -18,6 +18,7 @@ const chartTooltipStyle = {
 };
 
 export default function AdminAnalytics() {
+  const { adminStats, analyticsData } = useAdminData();
   const [timeRange, setTimeRange] = useState("6M");
 
   return (

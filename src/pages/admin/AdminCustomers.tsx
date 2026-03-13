@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import PanelLayout from "@/components/PanelLayout";
 import { PageHeader, DataTablePagination } from "@/components/StatCard";
-import { customers } from "@/data/dummyData";
+import { useAdminData } from "@/hooks/useBackendData";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { adminApi } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
 
 export default function AdminCustomers() {
+  const { customers } = useAdminData();
   // Fetch users from API with fallback
   const fetchUsers = useCallback(() => adminApi.getAllUsers(), []);
   const { data: apiUsers } = useApi(fetchUsers, null);

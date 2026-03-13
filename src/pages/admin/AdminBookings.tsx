@@ -1,7 +1,7 @@
 import { useState } from "react";
 import PanelLayout from "@/components/PanelLayout";
 import { StatusBadge, PageHeader, DataTablePagination } from "@/components/StatCard";
-import { bookings } from "@/data/dummyData";
+import { useAdminData } from "@/hooks/useBackendData";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { format } from "date-fns";
 const statusFilters = ["All", "confirmed", "pending", "cancelled"];
 
 export default function AdminBookings() {
+  const { bookings } = useAdminData();
   const [filter, setFilter] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
