@@ -57,6 +57,10 @@ export default function LandingPage() {
   const { isAuthenticated, user } = useAuth();
   const heroRef = useRef<HTMLDivElement>(null);
 
+  // Fetch real packages from API
+  const fetchPackages = useCallback(() => appApi.getAllPackages(), []);
+  const { data: apiPackages } = useApi(fetchPackages, null);
+
   const getDashboardLink = () => {
     if (!isAuthenticated || !user) return "/login";
     return `/${user.role}`;
