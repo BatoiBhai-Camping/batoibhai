@@ -1,5 +1,5 @@
 import { ReactNode, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, useSidebar,
@@ -8,7 +8,7 @@ import { NavLink } from "@/components/NavLink";
 import { Avatar, Badge, IconButton, Tooltip, Menu, MenuItem, Divider } from "@mui/material";
 import {
   LayoutDashboard, Package, Users, BarChart3, Map, CalendarCheck, Heart,
-  Wallet, Building2, Star, Compass, Hotel, Bell,
+  Wallet, Building2, Star, Compass, Hotel, Bell, Settings, LogOut,
   Search, Moon, Sun, ChevronDown, HelpCircle
 } from "lucide-react";
 import { useAdminData, usePartnerData } from "@/hooks/useBackendData";
@@ -99,43 +99,6 @@ function PanelSidebar({ panel }: { panel: PanelType }) {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <div className="mt-auto">
-          {!collapsed && (
-            <>
-              <div className="px-4 py-3 border-t border-sidebar-border">
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <a href="#" className="text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
-                        <Settings className="mr-3 h-4 w-4 shrink-0" />
-                        <span>Settings</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <a href="#" className="text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
-                        <HelpCircle className="mr-3 h-4 w-4 shrink-0" />
-                        <span>Help & Support</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </div>
-              <div className="p-4 border-t border-sidebar-border">
-                <div className="flex items-center gap-3">
-                  <Avatar sx={{ width: 36, height: 36, bgcolor: "hsl(32, 95%, 52%)", fontSize: 14, fontWeight: 700 }}>
-                    {config.user.name[0]}
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-sidebar-foreground truncate">{config.user.name}</p>
-                    <p className="text-xs text-sidebar-muted truncate">{config.user.email}</p>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
       </SidebarContent>
     </Sidebar>
   );
@@ -146,7 +109,9 @@ export default function PanelLayout({ children, panel }: PanelLayoutProps) {
   const partnerData = usePartnerData();
   const notifications = panel === "admin" ? adminData.notifications : panel === "partner" ? partnerData.notifications : fallbackNotifications;
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
-  const { user } = useAuth();
+  const [profileAnchor, setProfileAnchor] = useState<null | HTMLElement>(null);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const config = panelConfig[panel];
   const unreadNotifs = notifications.filter(n => !n.read).length;
   const displayUser = user || config.user;
@@ -205,6 +170,31 @@ export default function PanelLayout({ children, panel }: PanelLayoutProps) {
                 <MenuItem sx={{ justifyContent: "center", py: 1 }}>
                   <span className="text-xs font-medium text-primary">View All Notifications</span>
                 </MenuItem>
+              </Menu>
+
+              <Tooltip title="Profile" arrow>
+                <IconButton size="small" onClick={(e) => setProfileAnchor(e.currentTarget)}>
+                  <Avatar sx={{ width: 28, height: 28, bgcolor: "hsl(32, 95%, 52%)", fontSize: 12, fontWeight: 700 }}>
+                    {displayUser.name[0]}
+                  </Avatar>
+                </IconButton>
+              </Tooltip>
+              <Menu
+                anchorEl={profileAnchor}
+                open={Boolean(profileAnchor)}
+                onClose={() => setProfileAnchor(null)}
+                PaperProps={{ sx: { width: 220, borderRadius: 2, mt: 1 } }}
+                transformOrigin={{ horizontal: "right", vertical: "top" }}
+                anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+              >
+                <div className="px-4 py-3 border-b">
+                  <p className="font-medium text-sm">{displayUser.name}</p>
+                  <p className="text-xs text-muted-foreground">{displayUser.role || config.user.role}</p>
+                </div>
+                <MenuItem sx={{ fontSize: 13, py: 1 }}><Settings className="w-3.5 h-3.5 mr-2" /> Settings</MenuItem>
+                <MenuItem sx={{ fontSize: 13, py: 1 }}><HelpCircle className="w-3.5 h-3.5 mr-2" /> Help Center</MenuItem>
+                <Divider />
+                <MenuItem onClick={() => { logout(); navigate("/"); setProfileAnchor(null); }} sx={{ fontSize: 13, py: 1, color: "hsl(0, 72%, 51%)" }}><LogOut className="w-3.5 h-3.5 mr-2" /> Logout</MenuItem>
               </Menu>
 
             </div>

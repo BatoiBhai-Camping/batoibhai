@@ -1,27 +1,15 @@
 // BatoiBhai API Service Layer
 // Base URL for all API calls
 
-const API_BASE = "https://api-dev.batoibhai.com/api/v1";
+const API_BASE = import.meta.env.VITE_API_BASE || "/api/v1";
 
 // Generic fetch wrapper with cookie-based auth
 
-function getCookieValue(name: string): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
-  return match ? decodeURIComponent(match[2]) : null;
-}
-
-function persistAuthCookie(token?: string | null) {
-  if (typeof document === "undefined" || !token) return;
-  document.cookie = `accesstoken=${encodeURIComponent(token)}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-}
 async function apiFetch<T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<{ success: boolean; statusCode: number; data: T | null; message: string; errors?: any[] }> {
  const url = `${API_BASE}${endpoint}`;
-
-const tokenFromCookie = getCookieValue("accesstoken");
 
 const config: RequestInit = {
   ...options,
@@ -29,9 +17,6 @@ const config: RequestInit = {
   headers: {
     ...(options?.headers || {}),
     "Content-Type": "application/json",
-    ...(tokenFromCookie && !(options?.headers as Record<string, string> | undefined)?.Authorization
-      ? { Authorization: `Bearer ${tokenFromCookie}` }
-      : {}),
   },
   };
 
@@ -41,16 +26,7 @@ const config: RequestInit = {
     const isJson = contentType.includes("application/json");
     const json = isJson ? await response.json() : null;
 
-    if (json) {
-      const responseToken =
-        (json as any)?.data?.accessToken ||
-        (json as any)?.data?.token ||
-        (json as any)?.accessToken ||
-        (json as any)?.token ||
-        null;
-      persistAuthCookie(responseToken);
-      return json;
-    }
+    if (json) return json;
 
     return {
       success: response.ok,
