@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PanelLayout from "@/components/PanelLayout";
 import { PageHeader, EmptyState } from "@/components/StatCard";
-import { wishlist } from "@/data/dummyData";
 import { usePublicData } from "@/hooks/useBackendData";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Star, MapPin, Trash2, Search, ShoppingBag } from "lucide-react";
@@ -10,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, IconButton } from "@mui/material";
 
 export default function CustomerWishlist() {
-  usePublicData();
+  const { wishlist } = usePublicData();
   const navigate = useNavigate();
   const [items, setItems] = useState(wishlist);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);

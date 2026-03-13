@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import PanelLayout from "@/components/PanelLayout";
 import { PageHeader } from "@/components/StatCard";
-import { offers } from "@/data/dummyData";
 import { usePublicData } from "@/hooks/useBackendData";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -29,7 +28,7 @@ const paymentMethods = [
 ];
 
 export default function BookingFlow() {
-  const { packages } = usePublicData();
+  const { packages, offers } = usePublicData();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const packageId = Number(searchParams.get("package")) || 1;

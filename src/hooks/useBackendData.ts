@@ -14,6 +14,8 @@ import {
   partnerStats as fallbackPartnerStats,
   partners as fallbackPartners,
   reviews as fallbackReviews,
+  myTrips as fallbackMyTrips,
+  wishlist as fallbackWishlist,
 } from "@/data/dummyData";
 
 const toArray = <T,>(value: unknown, fallback: T[]): T[] => (Array.isArray(value) ? (value as T[]) : fallback);
@@ -60,11 +62,53 @@ export function usePublicData() {
     }));
   }, [packageList]);
 
+
+  const customerBookings = useMemo(() => {
+    if (!packageList.length) return fallbackBookings;
+    return packageList.slice(0, 6).map((p: any, idx: number) => ({
+      id: `BK-${String(idx + 1).padStart(3, "0")}`,
+      customer: "Traveler",
+      package: p.name,
+      date: new Date().toISOString().slice(0, 10),
+      amount: Number(p.price || 0),
+      status: idx % 3 === 0 ? "confirmed" : idx % 3 === 1 ? "pending" : "cancelled",
+      partner: p.partner || "Verified Partner",
+      travelers: 2,
+    }));
+  }, [packageList]);
+
+  const customerTrips = useMemo(() => {
+    if (!packageList.length) return fallbackMyTrips;
+    return packageList.slice(0, 6).map((p: any, idx: number) => ({
+      id: idx + 1,
+      package: p.name,
+      partner: p.partner || "Verified Partner",
+      date: new Date(Date.now() + idx * 86400000 * 7).toISOString().slice(0, 10),
+      status: idx < 2 ? "completed" : "upcoming",
+      amount: Number(p.price || 0),
+      rating: idx < 2 ? 5 - idx : null,
+    }));
+  }, [packageList]);
+
+  const wishlist = useMemo(() => {
+    if (!destinations.length) return fallbackWishlist;
+    return destinations.slice(0, 4).map((d: any, idx: number) => ({
+      id: d.id || idx + 1,
+      destination: d.name,
+      image: d.image,
+      price: Number(d.price || 0),
+      rating: Number(d.rating || 4.5),
+      category: d.category || "Travel",
+    }));
+  }, [destinations]);
   return {
     packages: packageList,
     destinations,
     hotels: fallbackHotels,
     offers: fallbackOffers,
+    customerBookings,
+    customerTrips,
+    wishlist,
   };
 }
 

@@ -21,8 +21,19 @@ const config: RequestInit = {
 
   try {
     const response = await fetch(url, config);
-    const json = await response.json();
-    return json;
+    const contentType = response.headers.get("content-type") || "";
+    const isJson = contentType.includes("application/json");
+    const json = isJson ? await response.json() : null;
+
+    if (json) return json;
+
+    return {
+      success: response.ok,
+      statusCode: response.status,
+      data: null,
+      message: response.ok ? "Request successful" : `Request failed with status ${response.status}`,
+      errors: [],
+    };
   } catch (error: any) {
     return {
       success: false,
@@ -80,10 +91,10 @@ export const userApi = {
     apiFetch("/user/update-profile", { method: "POST", body: JSON.stringify(data) }),
 
   logout: () =>
-    apiFetch("/user/logout", { method: "POST", body: JSON.stringify({}) }),
+    apiFetch("/user/logout", { method: "DELETE" }),
 
   deleteAccount: () =>
-    apiFetch("/user/delete-account", { method: "DELETE" }),
+    apiFetch("/user/delete-acc", { method: "DELETE" }),
 };
 
 // ============ AGENT (Partner) ============
@@ -211,16 +222,16 @@ export const agentApi = {
     apiFetch("/agent/publish-package", { method: "POST", body: JSON.stringify(data) }),
 
   getAllPackages: () =>
-    apiFetch("/agent/get-all-packages", { method: "GET" }),
+    apiFetch("/agent/get-all-pkgs", { method: "GET" }),
 
   updatePackage: (data: any) =>
     apiFetch("/agent/update-package", { method: "POST", body: JSON.stringify(data) }),
 
   logout: () =>
-    apiFetch("/agent/logout", { method: "POST", body: JSON.stringify({}) }),
+    apiFetch("/agent/logout", { method: "DELETE" }),
 
   deleteAccount: () =>
-    apiFetch("/agent/delete-account", { method: "DELETE" }),
+    apiFetch("/agent/delete-acc", { method: "DELETE" }),
 };
 
 // ============ ADMIN ============
@@ -274,10 +285,10 @@ export const adminApi = {
     apiFetch("/admin/update-profile", { method: "POST", body: JSON.stringify(data) }),
 
   logout: () =>
-    apiFetch("/admin/logout", { method: "POST", body: JSON.stringify({}) }),
+    apiFetch("/admin/logout", { method: "DELETE" }),
 
   deleteAccount: () =>
-    apiFetch("/admin/delete-account", { method: "DELETE" }),
+    apiFetch("/admin/delete-acc", { method: "DELETE" }),
 };
 
 // ============ ROOT ADMIN ============
@@ -332,10 +343,10 @@ export const rootAdminApi = {
     apiFetch("/root-admin/update-profile", { method: "POST", body: JSON.stringify(data) }),
 
   logout: () =>
-    apiFetch("/root-admin/logout", { method: "POST", body: JSON.stringify({}) }),
+    apiFetch("/root-admin/logout", { method: "DELETE" }),
 
   deleteAccount: () =>
-    apiFetch("/root-admin/delete-account", { method: "DELETE" }),
+    apiFetch("/root-admin/delete-acc", { method: "DELETE" }),
 };
 
 // ============ PAYMENT ============
