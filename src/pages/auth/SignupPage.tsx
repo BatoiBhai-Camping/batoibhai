@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useAuth, UserRole } from "@/contexts/AuthContext";
 import {
   TextField, Button as MuiButton, Alert, CircularProgress, IconButton, InputAdornment,
-  ToggleButtonGroup, ToggleButton, Typography, Box, Stepper, Step, StepLabel
+  Typography, Box, Stepper, Step, StepLabel
 } from "@mui/material";
 import {
   Visibility, VisibilityOff, Email, Lock, Person, Phone,
@@ -13,7 +13,7 @@ import {
 
 const roles: { value: UserRole; label: string; icon: React.ReactElement; desc: string }[] = [
   { value: "customer", label: "Traveler", icon: <TravelExplore />, desc: "Book trips & explore Odisha" },
-  { value: "partner", label: "Partner", icon: <Handshake />, desc: "List packages & grow business" },
+  { value: "partner", label: "Travel Agent", icon: <Handshake />, desc: "List packages & grow business" },
   { value: "admin", label: "Admin", icon: <AdminPanelSettings />, desc: "Manage the platform" },
 ];
 
@@ -34,7 +34,8 @@ export default function SignupPage() {
   const handleNext = () => {
     if (step === 0 && !role) { setError("Select a role"); return; }
     if (step === 1) {
-      if (!name || !email || !phone) { setError("Fill all fields"); return; }
+      if (!name || !email) { setError("Name and email are required"); return; }
+      if (!/\S+@\S+\.\S+/.test(email)) { setError("Enter a valid email address"); return; }
     }
     setError("");
     setStep(step + 1);
@@ -157,7 +158,7 @@ export default function SignupPage() {
                 slotProps={{ input: { startAdornment: <InputAdornment position="start"><Person sx={{ fontSize: 20, color: "hsl(210,10%,50%)" }} /></InputAdornment> } }} />
               <TextField fullWidth label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required sx={{ mb: 2 }}
                 slotProps={{ input: { startAdornment: <InputAdornment position="start"><Email sx={{ fontSize: 20, color: "hsl(210,10%,50%)" }} /></InputAdornment> } }} />
-              <TextField fullWidth label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} required sx={{ mb: 3 }}
+              <TextField fullWidth label="Phone (optional)" value={phone} onChange={(e) => setPhone(e.target.value)} sx={{ mb: 3 }}
                 slotProps={{ input: { startAdornment: <InputAdornment position="start"><Phone sx={{ fontSize: 20, color: "hsl(210,10%,50%)" }} /></InputAdornment> } }} />
               <Box sx={{ display: "flex", gap: 2 }}>
                 <MuiButton variant="outlined" sx={{ flex: 1, py: 1.5, borderRadius: 2, textTransform: "none", fontWeight: 600 }} onClick={() => setStep(0)}>Back</MuiButton>
@@ -169,6 +170,7 @@ export default function SignupPage() {
           {step === 2 && (
             <form onSubmit={handleSignup}>
               <TextField fullWidth label="Password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} required sx={{ mb: 2 }}
+                helperText="Minimum 6 characters"
                 slotProps={{
                   input: {
                     startAdornment: <InputAdornment position="start"><Lock sx={{ fontSize: 20, color: "hsl(210,10%,50%)" }} /></InputAdornment>,
