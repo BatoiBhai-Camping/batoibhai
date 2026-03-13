@@ -66,7 +66,7 @@ export default function AdminCustomers() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <div className="bg-card border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Total Customers</p>
-          <p className="text-2xl font-bold font-display mt-1">{customers.length}</p>
+          <p className="text-2xl font-bold font-display mt-1">{customerList.length}</p>
         </div>
         <div className="bg-card border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Total Revenue</p>
