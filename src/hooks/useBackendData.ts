@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useApi } from "@/hooks/useApi";
-import { adminApi, agentApi, appApi } from "@/lib/api";
+import { adminApi, agentApi, appApi, userApi } from "@/lib/api";
 import {
   adminStats as fallbackAdminStats,
   analyticsData as fallbackAnalytics,
@@ -23,6 +23,7 @@ const toArray = <T,>(value: unknown, fallback: T[]): T[] => (Array.isArray(value
 export function usePublicData() {
   const fetcher = useCallback(() => appApi.getAllPackages(), []);
   const { data } = useApi<any>(fetcher, []);
+  const { data: userBookingsData } = useApi<any>(useCallback(() => userApi.getAllBookings(), []), []);
 
   const packageList = useMemo(() => {
     const list = toArray<any>(data, []);
@@ -67,6 +68,20 @@ export function usePublicData() {
 
 
   const customerBookings = useMemo(() => {
+    const rawBookings = toArray<any>(userBookingsData, []);
+    if (rawBookings.length) {
+      return rawBookings.map((b: any, idx: number) => ({
+        id: b.bookingCode || b.id || `BK-${String(idx + 1).padStart(3, "0")}`,
+        customer: b.user?.fullName || b.customer?.fullName || "Traveler",
+        package: b.package?.title || b.travelPackage?.title || b.packageTitle || "Travel Package",
+        date: (b.createdAt || b.travelDate || new Date().toISOString()).slice(0, 10),
+        amount: Number(b.totalAmount || b.amount || 0),
+        status: (b.status || b.bookingStatus || b.paymentStatus || "pending").toString().toLowerCase(),
+        partner: b.package?.agent?.companyName || b.partner?.companyName || "Verified Partner",
+        travelers: Number(b.numberOfTravelers || 1),
+      }));
+    }
+
     if (!packageList.length) return fallbackBookings;
     return packageList.slice(0, 6).map((p: any, idx: number) => ({
       id: `BK-${String(idx + 1).padStart(3, "0")}`,
@@ -78,9 +93,21 @@ export function usePublicData() {
       partner: p.partner || "Verified Partner",
       travelers: 2,
     }));
-  }, [packageList]);
+  }, [packageList, userBookingsData]);
 
   const customerTrips = useMemo(() => {
+    if (customerBookings.length) {
+      return customerBookings.map((b: any, idx: number) => ({
+        id: idx + 1,
+        package: b.package,
+        partner: b.partner,
+        date: b.date,
+        status: ["confirmed", "paid", "completed"].includes(b.status) ? "completed" : "upcoming",
+        amount: Number(b.amount || 0),
+        rating: ["confirmed", "paid", "completed"].includes(b.status) ? 5 : null,
+      }));
+    }
+
     if (!packageList.length) return fallbackMyTrips;
     return packageList.slice(0, 6).map((p: any, idx: number) => ({
       id: idx + 1,
@@ -91,7 +118,7 @@ export function usePublicData() {
       amount: Number(p.price || 0),
       rating: idx < 2 ? 5 - idx : null,
     }));
-  }, [packageList]);
+  }, [packageList, customerBookings]);
 
   const wishlist = useMemo(() => {
     if (!destinations.length) return fallbackWishlist;

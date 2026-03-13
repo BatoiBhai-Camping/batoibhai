@@ -72,6 +72,10 @@ export const userApi = {
   getProfile: () =>
     apiFetch("/user/get-profile", { method: "GET" }),
 
+
+  getAllBookings: () =>
+    apiFetch("/user/get-all-bookings", { method: "GET" }),
+
   updateProfile: (data: {
     fullName?: string;
     phone?: string;
