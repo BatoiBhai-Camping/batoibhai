@@ -44,6 +44,17 @@ interface SignupData {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+
+function setAccessCookie(token?: string | null) {
+  if (typeof document === "undefined" || !token) return;
+  document.cookie = `accesstoken=${encodeURIComponent(token)}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+}
+
+function clearAccessCookie() {
+  if (typeof document === "undefined") return;
+  document.cookie = "accesstoken=; path=/; max-age=0; SameSite=Lax";
+}
+
 function mapApiRole(apiRole: string): UserRole {
   switch (apiRole) {
     case "AGENT": return "partner";
@@ -120,6 +131,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: result.message || "Login failed" };
       }
 
+      setAccessCookie(result?.data?.accessToken || result?.data?.token || result?.accessToken || result?.token);
+
       // Login sets cookies, now fetch profile
       const profileUser = await fetchProfile(loginAs);
       if (profileUser) {
@@ -194,6 +207,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: result.message || "Registration failed" };
       }
 
+      setAccessCookie(result?.data?.accessToken || result?.data?.token || result?.accessToken || result?.token);
+
       // After registration, cookies are set. Fetch profile.
       const profileUser = await fetchProfile(data.role);
       if (profileUser) {
@@ -231,6 +246,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Ignore logout API errors
       }
     }
+    clearAccessCookie();
     persistUser(null);
   }, [user, persistUser]);
 
