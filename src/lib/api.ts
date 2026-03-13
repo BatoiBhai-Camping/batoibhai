@@ -49,6 +49,10 @@ const config: RequestInit = {
 // ============ APP (Public) ============
 
 export const appApi = {
+  /** Get all packages from root-level package endpoint */
+  getAllPackagesUniversal: () =>
+    apiFetch("/get-all-pkg", { method: "GET" }),
+
   /** Get all available packages (public, no auth) */
   getAllPackages: () =>
     apiFetch("/app/get-all-pkg", { method: "GET" }),

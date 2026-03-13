@@ -21,7 +21,11 @@ import {
 const toArray = <T,>(value: unknown, fallback: T[]): T[] => (Array.isArray(value) ? (value as T[]) : fallback);
 
 export function usePublicData() {
-  const fetcher = useCallback(() => appApi.getAllPackages(), []);
+  const fetcher = useCallback(async () => {
+    const universal = await appApi.getAllPackagesUniversal();
+    if (universal.success && universal.data) return universal;
+    return appApi.getAllPackages();
+  }, []);
   const { data } = useApi<any>(fetcher, []);
   const { data: userBookingsData } = useApi<any>(useCallback(() => userApi.getAllBookings(), []), []);
 
@@ -145,7 +149,11 @@ export function usePublicData() {
 export function useAdminData() {
   const { data: agents } = useApi<any>(useCallback(() => adminApi.getAllAgents(), []), []);
   const { data: users } = useApi<any>(useCallback(() => adminApi.getAllUsers(), []), []);
-  const { data: packages } = useApi<any>(useCallback(() => adminApi.getAllPackages(), []), []);
+  const { data: packages } = useApi<any>(useCallback(async () => {
+    const universal = await appApi.getAllPackagesUniversal();
+    if (universal.success && universal.data) return universal;
+    return adminApi.getAllPackages();
+  }, []), []);
   const { data: payments } = useApi<any>(useCallback(() => adminApi.getAllPayments(), []), []);
 
   const partnerList = toArray<any>(agents, fallbackPartners).map((p: any, i) => ({
@@ -209,7 +217,11 @@ export function useAdminData() {
 }
 
 export function usePartnerData() {
-  const { data: packages } = useApi<any>(useCallback(() => agentApi.getAllPackages(), []), []);
+  const { data: packages } = useApi<any>(useCallback(async () => {
+    const universal = await appApi.getAllPackagesUniversal();
+    if (universal.success && universal.data) return universal;
+    return agentApi.getAllPackages();
+  }, []), []);
 
   const packageList = toArray<any>(packages, fallbackPackages).map((p: any, i) => ({
     id: p.id || i + 1,
