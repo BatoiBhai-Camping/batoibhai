@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import PanelLayout from "@/components/PanelLayout";
 import { PageHeader } from "@/components/StatCard";
 import { offers } from "@/data/dummyData";
 import { usePublicData } from "@/hooks/useBackendData";
+import { useAuth } from "@/contexts/AuthContext";
+import { paymentApi } from "@/lib/api";
+import { loadRazorpayScript, openRazorpayCheckout } from "@/lib/razorpay";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,38 +18,58 @@ import { format } from "date-fns";
 import {
   CalendarIcon, Users, CheckCircle, ArrowRight, ArrowLeft,
   MapPin, Clock, Shield, CreditCard, Phone, Mail, User, Tag, Percent, Wallet,
-  AlertCircle, Smartphone, Building, Globe
+  AlertCircle, Smartphone, Building, Globe, Loader2
 } from "lucide-react";
-import { Stepper, Step, StepLabel, Chip, Snackbar, Alert, Tooltip } from "@mui/material";
+import { Stepper, Step, StepLabel, Chip, Snackbar, Alert, Tooltip, CircularProgress } from "@mui/material";
 
 const steps = ["Select Package", "Traveler Details", "Review & Pay"];
 
-const paymentMethods = [
-  { id: "UPI", label: "UPI", icon: Smartphone, desc: "GPay, PhonePe, Paytm" },
-  { id: "NetBanking", label: "Net Banking", icon: Building, desc: "All major banks" },
-  { id: "DebitCard", label: "Debit Card", icon: CreditCard, desc: "Visa, Mastercard, RuPay" },
-  { id: "CreditCard", label: "Credit Card", icon: Globe, desc: "No-cost EMI available" },
-];
-
 export default function BookingFlow() {
   const { packages } = usePublicData();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const packageId = Number(searchParams.get("package")) || 1;
-  const selectedPackage = packages.find(p => p.id === packageId) || packages[0];
+  const packageId = searchParams.get("package") || "";
+  const selectedPackage = packages.find(p => String(p.id) === packageId) || packages[0];
 
   const [activeStep, setActiveStep] = useState(0);
   const [date, setDate] = useState<Date>();
   const [travelers, setTravelers] = useState(2);
   const [coupon, setCoupon] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<typeof offers[0] | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState("UPI");
-  const [formData, setFormData] = useState({ name: "", email: "", phone: "", specialRequests: "", idType: "Aadhaar", idNumber: "" });
+  const [formData, setFormData] = useState({
+    name: user?.name || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    specialRequests: "",
+    idType: "Aadhaar",
+    idNumber: ""
+  });
   const [booked, setBooked] = useState(false);
+  const [bookingResult, setBookingResult] = useState<any>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "error" as "error" | "success" });
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "error" as "error" | "success" | "info" });
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [razorpayReady, setRazorpayReady] = useState(false);
 
-  const basePrice = selectedPackage.price * travelers;
+  // Pre-load Razorpay SDK
+  useEffect(() => {
+    loadRazorpayScript().then(setRazorpayReady);
+  }, []);
+
+  // Pre-fill from auth
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        name: prev.name || user.name || "",
+        email: prev.email || user.email || "",
+        phone: prev.phone || user.phone || "",
+      }));
+    }
+  }, [user]);
+
+  const basePrice = selectedPackage ? selectedPackage.price * travelers : 0;
   const discount = appliedCoupon ? Math.round(basePrice * appliedCoupon.discount / 100) : 0;
   const gst = Math.round((basePrice - discount) * 0.05);
   const totalPrice = basePrice - discount + gst;
@@ -73,12 +96,107 @@ export default function BookingFlow() {
   const handleNext = () => {
     if (!validateStep()) return;
     if (activeStep < 2) setActiveStep(a => a + 1);
-    else setBooked(true);
+    else handlePayment();
   };
+
   const handleBack = () => setActiveStep(a => a - 1);
 
-  if (booked) {
-    const bookingId = `BK-${String(Math.floor(Math.random() * 9000 + 1000))}`;
+  // ====== REAL PAYMENT FLOW ======
+  const handlePayment = async () => {
+    if (!selectedPackage) return;
+    setIsProcessing(true);
+
+    try {
+      // Step 1: Create order via API
+      const orderRes = await paymentApi.createOrder({
+        packageId: String(selectedPackage.id),
+        numberOfTravelers: travelers,
+      });
+
+      if (!orderRes.success || !orderRes.data) {
+        setSnackbar({ open: true, message: orderRes.message || "Failed to create order", severity: "error" });
+        setIsProcessing(false);
+        return;
+      }
+
+      const {
+        orderId, amount, currency, bookingId, bookingCode,
+        paymentId, packageTitle, razorpayKeyId, breakdown,
+      } = orderRes.data as any;
+
+      if (!razorpayReady) {
+        const loaded = await loadRazorpayScript();
+        if (!loaded) {
+          setSnackbar({ open: true, message: "Failed to load payment gateway. Please try again.", severity: "error" });
+          setIsProcessing(false);
+          return;
+        }
+      }
+
+      // Step 2: Open Razorpay checkout
+      openRazorpayCheckout({
+        razorpayKeyId,
+        orderId,
+        amount,
+        currency: currency || "INR",
+        packageTitle: packageTitle || selectedPackage.name,
+        userName: formData.name,
+        userEmail: formData.email,
+        userPhone: formData.phone,
+        onSuccess: async (response) => {
+          // Step 3: Verify payment
+          const verifyRes = await paymentApi.verifyPayment({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            bookingId,
+            paymentId,
+          });
+
+          setIsProcessing(false);
+
+          if (verifyRes.success) {
+            setBookingResult({
+              bookingId,
+              bookingCode,
+              packageTitle: packageTitle || selectedPackage.name,
+              travelers,
+              date: date ? format(date, "PPP") : "—",
+              breakdown,
+              totalAmount: breakdown?.totalAmount || totalPrice,
+            });
+            setBooked(true);
+            setSnackbar({ open: true, message: "Payment successful! Booking confirmed 🎉", severity: "success" });
+          } else {
+            setSnackbar({ open: true, message: verifyRes.message || "Payment verification failed", severity: "error" });
+          }
+        },
+        onFailure: (error) => {
+          setIsProcessing(false);
+          setSnackbar({
+            open: true,
+            message: error?.description || error?.reason || "Payment failed. Please try again.",
+            severity: "error"
+          });
+        },
+      });
+    } catch (err: any) {
+      setIsProcessing(false);
+      setSnackbar({ open: true, message: err?.message || "Something went wrong", severity: "error" });
+    }
+  };
+
+  if (!selectedPackage) {
+    return (
+      <PanelLayout panel="customer">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <p className="text-muted-foreground">Package not found. <Button variant="link" onClick={() => navigate("/customer")}>Browse packages</Button></p>
+        </div>
+      </PanelLayout>
+    );
+  }
+
+  if (booked && bookingResult) {
     return (
       <PanelLayout panel="customer">
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -89,16 +207,25 @@ export default function BookingFlow() {
               </div>
             </motion.div>
             <h2 className="font-display text-2xl font-bold mb-2">Booking Confirmed! 🎉</h2>
-            <p className="text-muted-foreground mb-2">Your booking for <strong>{selectedPackage.name}</strong> has been confirmed.</p>
-            <Chip label={`Booking ID: ${bookingId}`} sx={{ fontFamily: "monospace", fontWeight: 700, mb: 3, bgcolor: "hsl(192,70%,28%,0.1)", color: "hsl(192,70%,28%)" }} />
+            <p className="text-muted-foreground mb-2">Your booking for <strong>{bookingResult.packageTitle}</strong> has been confirmed.</p>
+            <Chip label={`Booking: ${bookingResult.bookingCode || bookingResult.bookingId}`} sx={{ fontFamily: "monospace", fontWeight: 700, mb: 3, bgcolor: "hsl(192,70%,28%,0.1)", color: "hsl(192,70%,28%)" }} />
 
             <div className="bg-muted/50 rounded-xl p-4 mb-6 text-left space-y-2">
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-medium">{selectedPackage.name}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Date</span><span className="font-medium">{date ? format(date, "PPP") : "TBD"}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Travelers</span><span className="font-medium">{travelers}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Payment</span><span className="font-medium">{paymentMethod}</span></div>
-              {appliedCoupon && <div className="flex justify-between text-sm text-success"><span>Discount ({appliedCoupon.code})</span><span>-₹{discount.toLocaleString()}</span></div>}
-              <div className="flex justify-between text-sm border-t pt-2 font-bold"><span>Total Paid</span><span className="text-primary">₹{totalPrice.toLocaleString()}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-medium">{bookingResult.packageTitle}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Date</span><span className="font-medium">{bookingResult.date}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Travelers</span><span className="font-medium">{bookingResult.travelers}</span></div>
+              {bookingResult.breakdown && (
+                <>
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Base Amount</span><span>₹{bookingResult.breakdown.baseAmount?.toLocaleString()}</span></div>
+                  {bookingResult.breakdown.discountAmount > 0 && (
+                    <div className="flex justify-between text-sm text-success"><span>Discount</span><span>-₹{bookingResult.breakdown.discountAmount?.toLocaleString()}</span></div>
+                  )}
+                  {bookingResult.breakdown.taxAmount > 0 && (
+                    <div className="flex justify-between text-sm"><span className="text-muted-foreground">Tax</span><span>₹{bookingResult.breakdown.taxAmount?.toLocaleString()}</span></div>
+                  )}
+                </>
+              )}
+              <div className="flex justify-between text-sm border-t pt-2 font-bold"><span>Total Paid</span><span className="text-primary">₹{(bookingResult.breakdown?.totalAmount || bookingResult.totalAmount)?.toLocaleString()}</span></div>
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => navigate("/customer/bookings")}>View Bookings</Button>
@@ -139,7 +266,7 @@ export default function BookingFlow() {
                       <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mt-1">
                         <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {selectedPackage.duration}</span>
                         <span className="flex items-center gap-1"><Users className="w-4 h-4" /> Max {selectedPackage.maxPeople}</span>
-                        <span className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {selectedPackage.partner}</span>
+                        <span className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {selectedPackage.destination || selectedPackage.partner}</span>
                       </div>
                       <div className="flex flex-wrap gap-1.5 mt-3">
                         {selectedPackage.includes.map(inc => (<Chip key={inc} label={inc} size="small" sx={{ bgcolor: "hsl(210,80%,55%,0.1)", color: "hsl(210,80%,45%)", fontWeight: 600, fontSize: 10, height: 22 }} />))}
@@ -167,8 +294,8 @@ export default function BookingFlow() {
                   <div className="flex items-center gap-4">
                     <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setTravelers(Math.max(1, travelers - 1))} disabled={travelers <= 1}>-</Button>
                     <span className="text-3xl font-bold font-display w-14 text-center">{travelers}</span>
-                    <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setTravelers(Math.min(selectedPackage.maxPeople, travelers + 1))} disabled={travelers >= selectedPackage.maxPeople}>+</Button>
-                    <span className="text-sm text-muted-foreground">Max {selectedPackage.maxPeople} persons</span>
+                    <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setTravelers(Math.min(selectedPackage.maxPeople || 10, travelers + 1))} disabled={travelers >= (selectedPackage.maxPeople || 10)}>+</Button>
+                    <span className="text-sm text-muted-foreground">Max {selectedPackage.maxPeople || 10} persons</span>
                   </div>
                 </div>
               </motion.div>
@@ -269,27 +396,17 @@ export default function BookingFlow() {
                   </div>
                 </div>
 
-                {/* Payment */}
+                {/* Payment info */}
                 <div className="bg-card border rounded-xl p-6">
-                  <h3 className="font-display font-semibold mb-4">Payment Method</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    {paymentMethods.map(m => (
-                      <button
-                        key={m.id}
-                        onClick={() => setPaymentMethod(m.id)}
-                        className={`border-2 rounded-xl p-4 text-left transition-all ${paymentMethod === m.id ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-primary/30"}`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${paymentMethod === m.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                            <m.icon className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold">{m.label}</p>
-                            <p className="text-xs text-muted-foreground">{m.desc}</p>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
+                  <h3 className="font-display font-semibold mb-3 flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-primary" /> Payment via Razorpay
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    You'll be redirected to Razorpay's secure checkout to complete payment via UPI, Net Banking, Debit/Credit Card, or Wallet.
+                  </p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Shield className="w-4 h-4 text-success" />
+                    <span>256-bit SSL encrypted • PCI DSS compliant</span>
                   </div>
                 </div>
               </motion.div>
@@ -297,12 +414,14 @@ export default function BookingFlow() {
           </AnimatePresence>
 
           <div className="flex justify-between mt-6">
-            <Button variant="outline" onClick={handleBack} disabled={activeStep === 0}>
+            <Button variant="outline" onClick={handleBack} disabled={activeStep === 0 || isProcessing}>
               <ArrowLeft className="w-4 h-4 mr-1" /> Back
             </Button>
-            <Button onClick={handleNext} className="bg-primary text-primary-foreground hover:bg-primary/90 px-8">
-              {activeStep === 2 ? (
-                <><Shield className="w-4 h-4 mr-1" /> Confirm & Pay ₹{totalPrice.toLocaleString()}</>
+            <Button onClick={handleNext} className="bg-primary text-primary-foreground hover:bg-primary/90 px-8" disabled={isProcessing}>
+              {isProcessing ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
+              ) : activeStep === 2 ? (
+                <><Shield className="w-4 h-4 mr-1" /> Pay ₹{totalPrice.toLocaleString()} with Razorpay</>
               ) : (
                 <>Continue <ArrowRight className="w-4 h-4 ml-1" /></>
               )}
@@ -331,6 +450,7 @@ export default function BookingFlow() {
                 <p>✓ Includes: {selectedPackage.includes.join(", ")}</p>
                 <p>✓ Partner: {selectedPackage.partner}</p>
                 <p>✓ {selectedPackage.duration}</p>
+                <p>✓ Powered by Razorpay</p>
                 <p>✓ 24/7 Customer Support</p>
               </div>
             </div>
@@ -338,7 +458,7 @@ export default function BookingFlow() {
         </div>
       </div>
 
-      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })} anchorOrigin={{ vertical: "bottom", horizontal: "center" }}>
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })} anchorOrigin={{ vertical: "bottom", horizontal: "center" }}>
         <Alert severity={snackbar.severity} variant="filled" sx={{ borderRadius: 2 }}>{snackbar.message}</Alert>
       </Snackbar>
     </PanelLayout>

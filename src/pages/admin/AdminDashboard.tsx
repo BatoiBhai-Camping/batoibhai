@@ -6,7 +6,7 @@ import { BarChart3, Users, Package, DollarSign, TrendingUp, Building2, Bell, Ale
 import { motion } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer } from "recharts";
 import { Button } from "@/components/ui/button";
-import { Avatar, Chip, Tooltip, IconButton, LinearProgress } from "@mui/material";
+import { Avatar, Chip, Tooltip, IconButton, LinearProgress, Skeleton } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
 const quickActions = [
@@ -17,12 +17,13 @@ const quickActions = [
 ];
 
 export default function AdminDashboard() {
-  const { adminStats, bookings, partners, revenueData, notifications } = useAdminData();
+  const { adminStats, bookings, partners, revenueData, notifications, isLoading, refetchAll } = useAdminData();
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = () => {
     setRefreshing(true);
+    refetchAll();
     setTimeout(() => setRefreshing(false), 1500);
   };
 
@@ -45,7 +46,7 @@ export default function AdminDashboard() {
         }
       />
 
-      {refreshing && <LinearProgress sx={{ mb: 2, borderRadius: 1, "& .MuiLinearProgress-bar": { bgcolor: "hsl(192, 70%, 28%)" } }} />}
+      {(refreshing || isLoading) && <LinearProgress sx={{ mb: 2, borderRadius: 1, "& .MuiLinearProgress-bar": { bgcolor: "hsl(192, 70%, 28%)" } }} />}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard title="Total Revenue" value={`₹${(adminStats.totalRevenue / 100000).toFixed(1)}L`} change={`${adminStats.growthRate}% vs last month`} icon={<DollarSign className="w-5 h-5" />} trend="up" tooltip="Total platform revenue including all partners" />
@@ -57,14 +58,8 @@ export default function AdminDashboard() {
       {/* Quick Actions */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
         {quickActions.map((a, i) => (
-          <motion.button
-            key={a.label}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            onClick={() => navigate(a.href)}
-            className="bg-card border rounded-xl p-4 flex items-center gap-3 hover:shadow-md hover:border-primary/30 transition-all group"
-          >
+          <motion.button key={a.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+            onClick={() => navigate(a.href)} className="bg-card border rounded-xl p-4 flex items-center gap-3 hover:shadow-md hover:border-primary/30 transition-all group">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
               <a.icon className="w-5 h-5" />
             </div>
@@ -84,10 +79,7 @@ export default function AdminDashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(210, 18%, 90%)" />
               <XAxis dataKey="month" tick={{ fontSize: 12, fontFamily: "var(--font-body)" }} />
               <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 100000).toFixed(1)}L`} />
-              <ReTooltip
-                formatter={(v: number) => [`₹${v.toLocaleString()}`, "Revenue"]}
-                contentStyle={{ borderRadius: 12, border: "1px solid hsl(210,18%,90%)", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontFamily: "var(--font-body)" }}
-              />
+              <ReTooltip formatter={(v: number) => [`₹${v.toLocaleString()}`, "Revenue"]} contentStyle={{ borderRadius: 12, border: "1px solid hsl(210,18%,90%)", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} />
               <Bar dataKey="revenue" fill="hsl(192, 70%, 28%)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -100,13 +92,13 @@ export default function AdminDashboard() {
               <Button variant="link" size="sm" className="text-primary text-xs p-0 h-auto" onClick={() => navigate("/admin/partners")}>View All</Button>
             </div>
             <div className="space-y-3">
-              {partners.slice(0, 4).map((p, i) => (
+              {partners.slice(0, 4).map((p: any, i: number) => (
                 <div key={p.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-3">
                     <Avatar sx={{ width: 32, height: 32, bgcolor: `hsl(${192 + i * 30}, 60%, 35%)`, fontSize: 12, fontWeight: 700 }}>{p.name[0]}</Avatar>
                     <div>
                       <p className="text-sm font-medium">{p.name}</p>
-                      <p className="text-xs text-muted-foreground">{p.packages} pkgs • ₹{(p.revenue / 1000).toFixed(0)}K</p>
+                      <p className="text-xs text-muted-foreground">{p.packages} pkgs • ₹{((p.revenue || 0) / 1000).toFixed(0)}K</p>
                     </div>
                   </div>
                   <StatusBadge status={p.status} />
@@ -133,7 +125,7 @@ export default function AdminDashboard() {
         <div className="p-5 border-b flex items-center justify-between">
           <div>
             <h3 className="font-display font-semibold">Recent Bookings</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Showing latest 6 bookings across the platform</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Showing latest bookings across the platform</p>
           </div>
           <Button variant="outline" size="sm" onClick={() => navigate("/admin/bookings")}>View All</Button>
         </div>
@@ -151,7 +143,7 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {bookings.slice(0, 6).map((b) => (
+              {bookings.slice(0, 6).map((b: any) => (
                 <tr key={b.id}>
                   <td className="font-mono text-xs">{b.id}</td>
                   <td>
