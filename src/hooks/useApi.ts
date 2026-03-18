@@ -1,52 +1,50 @@
 import { useState, useEffect, useCallback } from "react";
+import type { ApiResponse } from "@/lib/api";
 
 interface UseApiState<T> {
-  data: T | null;
+  data: T;
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
 }
 
-/**
- * Generic hook for API data fetching with fallback support.
- * Falls back to provided default data if API call fails.
- */
 export function useApi<T>(
-  fetcher: () => Promise<{ success: boolean; data: T | null; message: string }>,
+  fetcher: () => Promise<ApiResponse<T>>,
   fallback: T,
   autoFetch = true
 ): UseApiState<T> {
-  const [data, setData] = useState<T | null>(null);
+  const [data, setData] = useState<T>(fallback);
   const [isLoading, setIsLoading] = useState(autoFetch);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+
     try {
       const result = await fetcher();
-      if (result.success && result.data) {
+      if (result.success && result.data !== null) {
         setData(result.data);
       } else {
-        // Use fallback data if API fails
         setData(fallback);
         if (!result.success) {
           setError(result.message || "Failed to fetch data");
         }
       }
-    } catch (err: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Network error";
       setData(fallback);
-      setError(err?.message || "Network error");
+      setError(message);
     } finally {
       setIsLoading(false);
     }
-  }, [fetcher, fallback]);
+  }, [fallback, fetcher]);
 
   useEffect(() => {
     if (autoFetch) {
-      fetchData();
+      void fetchData();
     }
-  }, []);
+  }, [autoFetch, fetchData]);
 
-  return { data: data ?? fallback, isLoading, error, refetch: fetchData };
+  return { data, isLoading, error, refetch: fetchData };
 }

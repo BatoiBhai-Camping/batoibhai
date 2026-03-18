@@ -1,92 +1,262 @@
-// BatoiBhai API Service Layer
-// Base URL for all API calls
+const API_BASE = import.meta.env.VITE_API_BASE || "/api/v1";
 
-const API_BASE = "https://api-dev.batoibhai.com/api/v1";
+export interface ApiErrorItem {
+  field?: string;
+  message?: string;
+  code?: string;
+  path?: string[];
+}
 
-// Generic fetch wrapper with cookie-based auth
-async function apiFetch<T = any>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<{ success: boolean; statusCode: number; data: T | null; message: string; errors?: any[] }> {
- const url = `${API_BASE}${endpoint}`;
+export interface ApiResponse<T> {
+  success: boolean;
+  statusCode: number;
+  data: T | null;
+  message: string;
+  errors?: ApiErrorItem[];
+}
 
-const config: RequestInit = {
-  ...options,
-  credentials: "include",
-  headers: {
-    ...(options?.headers || {}),
-    "Content-Type": "application/json",
-  },
+export interface AddressInput {
+  id?: string;
+  addressType?: "PERMANENT" | "CURRENT" | "TRAVEL";
+  country?: string;
+  state?: string;
+  district?: string;
+  pin?: string;
+  city?: string;
+  longitude?: string;
+  latitude?: string;
+}
+
+export interface ImageAsset {
+  id?: string;
+  imageUrl: string;
+  fileId: string;
+}
+
+export interface PublicPackageRecord {
+  id?: string;
+  packageId?: string;
+  agentId?: string;
+  title?: string;
+  name?: string;
+  description?: string;
+  pricePerPerson?: number;
+  price?: number;
+  packageApprovedStatus?: string;
+  approveStatus?: string;
+  discountAmount?: number;
+  discountPercentage?: number;
+  withTax?: boolean;
+  taxPercentage?: number;
+  totalSeats?: number;
+  seatsAvailable?: number;
+  seatBooked?: number;
+  bookedSeats?: number;
+  destination?: string;
+  durationDays?: number;
+  startDate?: string;
+  endDate?: string;
+  bookingActiveFrom?: string;
+  bookingEndAt?: string;
+  packagePolicies?: string;
+  cancellationPolicies?: string;
+  isBookingActive?: boolean;
+  isDeleted?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  tags?: string[];
+  packageBannerImage?: { url?: string; imageUrl?: string; fileId?: string };
+  bannerImage?: ImageAsset;
+  bannerImageUrl?: string;
+  packageBannerImageId?: string;
+  agent?: {
+    companyName?: string;
+  };
+}
+
+export interface UserProfileRecord {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  role: "TRAVELER";
+  emailVerified: boolean;
+  profileImage?: ImageAsset | null;
+  addresses?: AddressInput[];
+  createdAt: string;
+}
+
+export interface AgentProfileRecord {
+  id: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  emailVerified: boolean;
+  profileImage?: ImageAsset | null;
+  agentProfile?: {
+    id: string;
+    companyName: string;
+    description?: string;
+    aadharNumber?: string;
+    panNumber?: string;
+    gstNumber?: string;
+    status?: string;
+    bannerImage?: ImageAsset | null;
+  };
+  addresses?: AddressInput[];
+  documents?: Array<{
+    id?: string;
+    documentType?: string;
+    documentUrl?: string;
+    documentFileId?: string;
+  }>;
+  createdAt: string;
+}
+
+export interface AdminProfileRecord {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  role: "ADMIN" | "ROOTADMIN";
+  roleStatus?: string;
+  emailVerified: boolean;
+  profileImage?: ImageAsset | null;
+  createdAt: string;
+}
+
+export interface AgentListRecord {
+  id: string;
+  userId?: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  companyName?: string;
+  status?: string;
+  emailVerified?: boolean;
+  createdAt?: string;
+}
+
+export interface UserListRecord {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  role?: string;
+  emailVerified?: boolean;
+  createdAt?: string;
+}
+
+export interface AdminPaymentRecord {
+  paymentId?: string;
+  bookingId?: string;
+  userId?: string;
+  amount?: number;
+  status?: string;
+  paymentMethod?: string;
+  transactionId?: string;
+  createdAt?: string;
+}
+
+export interface PaymentOrderRecord {
+  orderId: string;
+  amount: number;
+  currency: string;
+  bookingId: string;
+  bookingCode: string;
+  paymentId: string;
+  packageTitle: string;
+  numberOfTravelers: number;
+  breakdown?: {
+    baseAmount: number;
+    discountAmount: number;
+    taxAmount: number;
+    totalAmount: number;
+  };
+  razorpayKeyId: string;
+}
+
+function isApiEnvelope<T>(value: unknown): value is ApiResponse<T> {
+  return typeof value === "object" && value !== null && "success" in value && "statusCode" in value;
+}
+
+function buildHeaders(body: BodyInit | null | undefined, headers?: HeadersInit): HeadersInit {
+  const nextHeaders = new Headers(headers);
+  if (body && !(body instanceof FormData) && !nextHeaders.has("Content-Type")) {
+    nextHeaders.set("Content-Type", "application/json");
+  }
+  return nextHeaders;
+}
+
+async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+  const url = `${API_BASE}${endpoint}`;
+  const config: RequestInit = {
+    ...options,
+    credentials: "include",
+    headers: buildHeaders(options.body, options.headers),
   };
 
   try {
     const response = await fetch(url, config);
-    const json = await response.json();
-    return json;
-  } catch (error: any) {
+    const contentType = response.headers.get("content-type") || "";
+    const isJson = contentType.includes("application/json");
+    const payload: unknown = isJson ? await response.json() : null;
+
+    if (isApiEnvelope<T>(payload)) {
+      return payload;
+    }
+
+    return {
+      success: response.ok,
+      statusCode: response.status,
+      data: (payload as T | null) ?? null,
+      message: response.ok ? "Request successful" : `Request failed with status ${response.status}`,
+      errors: undefined,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Network error. Please try again.";
     return {
       success: false,
       statusCode: 500,
       data: null,
-      message: error?.message || "Network error. Please try again.",
-      errors: [],
+      message,
+      errors: undefined,
     };
   }
 }
 
-// ============ APP (Public) ============
-
 export const appApi = {
-  /** Get all available packages (public, no auth) */
-  getAllPackages: () =>
-    apiFetch("/app/get-all-pkg", { method: "GET" }),
+  getAllPackages: () => apiFetch<PublicPackageRecord[]>("/app/get-all-pkg", { method: "GET" }),
 };
-
-// ============ USER (Traveler) ============
 
 export const userApi = {
   register: (data: { fullName: string; email: string; password: string }) =>
-    apiFetch("/user/register", { method: "POST", body: JSON.stringify(data) }),
+    apiFetch<null>("/user/register", { method: "POST", body: JSON.stringify(data) }),
 
   login: (data: { email: string; password: string }) =>
-    apiFetch("/user/login", { method: "POST", body: JSON.stringify(data) }),
+    apiFetch<null>("/user/login", { method: "POST", body: JSON.stringify(data) }),
 
   verifyAccount: (verifyToken: string) =>
-    apiFetch("/user/verify-account", { method: "POST", body: JSON.stringify({ verifyToken }) }),
+    apiFetch<null>("/user/verify-account", { method: "POST", body: JSON.stringify({ verifyToken }) }),
 
   resendVerification: () =>
-    apiFetch("/user/send-verification-link", { method: "POST", body: JSON.stringify({}) }),
+    apiFetch<null>("/user/send-verification-link", { method: "POST", body: JSON.stringify({}) }),
 
-  getProfile: () =>
-    apiFetch("/user/get-profile", { method: "GET" }),
+  getProfile: () => apiFetch<UserProfileRecord>("/user/get-profile", { method: "GET" }),
 
   updateProfile: (data: {
     fullName?: string;
     phone?: string;
     profileImageUrl?: string;
     profileFileId?: string;
-    addresses?: Array<{
-      id?: string;
-      addressType?: "PERMANENT" | "CURRENT" | "TRAVEL";
-      country?: string;
-      state?: string;
-      district?: string;
-      pin?: string;
-      city?: string;
-      longitude?: string;
-      latitude?: string;
-    }>;
-  }) =>
-    apiFetch("/user/update-profile", { method: "POST", body: JSON.stringify(data) }),
+    addresses?: AddressInput[];
+  }) => apiFetch<UserProfileRecord>("/user/update-profile", { method: "POST", body: JSON.stringify(data) }),
 
-  logout: () =>
-    apiFetch("/user/logout", { method: "POST", body: JSON.stringify({}) }),
+  logout: () => apiFetch<null>("/user/logout", { method: "DELETE" }),
 
-  deleteAccount: () =>
-    apiFetch("/user/delete-account", { method: "DELETE" }),
+  deleteAccount: () => apiFetch<null>("/user/delete-acc", { method: "DELETE" }),
 };
-
-// ============ AGENT (Partner) ============
 
 export const agentApi = {
   register: (data: {
@@ -115,20 +285,18 @@ export const agentApi = {
     aadharDocumentFileId: string;
     panDocumentUrl?: string;
     panDocumentFileId?: string;
-  }) =>
-    apiFetch("/agent/register", { method: "POST", body: JSON.stringify(data) }),
+  }) => apiFetch<null>("/agent/register", { method: "POST", body: JSON.stringify(data) }),
 
   login: (data: { email: string; password: string }) =>
-    apiFetch("/agent/login", { method: "POST", body: JSON.stringify(data) }),
+    apiFetch<null>("/agent/login", { method: "POST", body: JSON.stringify(data) }),
 
   verifyAccount: (verifyToken: string) =>
-    apiFetch("/agent/verify-account", { method: "POST", body: JSON.stringify({ verifyToken }) }),
+    apiFetch<null>("/agent/verify-account", { method: "POST", body: JSON.stringify({ verifyToken }) }),
 
   resendVerification: () =>
-    apiFetch("/agent/send-verification-link", { method: "POST", body: JSON.stringify({}) }),
+    apiFetch<null>("/agent/send-verification-link", { method: "POST", body: JSON.stringify({}) }),
 
-  getProfile: () =>
-    apiFetch("/agent/get-profile", { method: "GET" }),
+  getProfile: () => apiFetch<AgentProfileRecord>("/agent/get-profile", { method: "GET" }),
 
   updateProfile: (data: {
     fullName?: string;
@@ -142,17 +310,8 @@ export const agentApi = {
     gstNumber?: string;
     bannerImageUrl?: string;
     bannerFileId?: string;
-    addresses?: Array<{
-      id?: string;
-      addressType?: string;
-      country?: string;
-      state?: string;
-      district?: string;
-      pin?: string;
-      city?: string;
-    }>;
-  }) =>
-    apiFetch("/agent/update-profile", { method: "POST", body: JSON.stringify(data) }),
+    addresses?: AddressInput[];
+  }) => apiFetch<AgentProfileRecord>("/agent/update-profile", { method: "POST", body: JSON.stringify(data) }),
 
   publishPackage: (data: {
     title: string;
@@ -207,142 +366,120 @@ export const agentApi = {
         mealDescription?: string;
       }>;
     }>;
-  }) =>
-    apiFetch("/agent/publish-package", { method: "POST", body: JSON.stringify(data) }),
+  }) => apiFetch<null>("/agent/publish-package", { method: "POST", body: JSON.stringify(data) }),
 
-  getAllPackages: () =>
-    apiFetch("/agent/get-all-packages", { method: "GET" }),
+  getAllPackages: () => apiFetch<PublicPackageRecord[]>("/agent/get-all-pkgs", { method: "GET" }),
 
-  updatePackage: (data: any) =>
-    apiFetch("/agent/update-package", { method: "POST", body: JSON.stringify(data) }),
+  updatePackage: (data: Record<string, unknown>) =>
+    apiFetch<null>("/agent/update-package", { method: "POST", body: JSON.stringify(data) }),
 
-  logout: () =>
-    apiFetch("/agent/logout", { method: "POST", body: JSON.stringify({}) }),
+  logout: () => apiFetch<null>("/agent/logout", { method: "DELETE" }),
 
-  deleteAccount: () =>
-    apiFetch("/agent/delete-account", { method: "DELETE" }),
+  deleteAccount: () => apiFetch<null>("/agent/delete-acc", { method: "DELETE" }),
 };
-
-// ============ ADMIN ============
 
 export const adminApi = {
   register: (data: { fullName: string; email: string; password: string }) =>
-    apiFetch("/admin/register", { method: "POST", body: JSON.stringify(data) }),
+    apiFetch<null>("/admin/register", { method: "POST", body: JSON.stringify(data) }),
 
   login: (data: { email: string; password: string }) =>
-    apiFetch("/admin/login", { method: "POST", body: JSON.stringify(data) }),
+    apiFetch<null>("/admin/login", { method: "POST", body: JSON.stringify(data) }),
 
   verifyAccount: (verifyToken: string) =>
-    apiFetch("/admin/verify-account", { method: "POST", body: JSON.stringify({ verifyToken }) }),
+    apiFetch<null>("/admin/verify-account", { method: "POST", body: JSON.stringify({ verifyToken }) }),
 
   resendVerification: () =>
-    apiFetch("/admin/send-verification-link", { method: "POST", body: JSON.stringify({}) }),
+    apiFetch<null>("/admin/send-verification-link", { method: "POST", body: JSON.stringify({}) }),
 
   approveAgent: (agentId: string) =>
-    apiFetch("/admin/approve-agent", { method: "POST", body: JSON.stringify({ agentId }) }),
+    apiFetch<null>("/admin/approve-agent", { method: "POST", body: JSON.stringify({ agentId }) }),
 
   approvePackage: (packageId: string) =>
-    apiFetch("/admin/approve-pkg", { method: "POST", body: JSON.stringify({ packageId }) }),
+    apiFetch<null>("/admin/approve-pkg", { method: "POST", body: JSON.stringify({ packageId }) }),
 
   rejectPackage: (packageId: string) =>
-    apiFetch("/admin/reject-pkg", { method: "POST", body: JSON.stringify({ packageId }) }),
+    apiFetch<null>("/admin/reject-pkg", { method: "POST", body: JSON.stringify({ packageId }) }),
 
-  getAllAgents: () =>
-    apiFetch("/admin/get-all-agent", { method: "GET" }),
+  getAllAgents: () => apiFetch<AgentListRecord[]>("/admin/get-all-agent", { method: "GET" }),
 
-  getAllUsers: () =>
-    apiFetch("/admin/get-all-user", { method: "GET" }),
+  getAllUsers: () => apiFetch<UserListRecord[]>("/admin/get-all-user", { method: "GET" }),
 
-  getAllPackages: () =>
-    apiFetch("/admin/get-all-pkg", { method: "GET" }),
+  getAllPackages: () => apiFetch<PublicPackageRecord[]>("/admin/get-all-pkg", { method: "GET" }),
 
   getAgentPackages: (id: string) =>
-    apiFetch("/admin/get-agent-pkg", { method: "POST", body: JSON.stringify({ id }) }),
+    apiFetch<PublicPackageRecord[]>("/admin/get-agent-pkg", { method: "POST", body: JSON.stringify({ id }) }),
 
-  getAllPayments: () =>
-    apiFetch("/admin/get-all-payments", { method: "GET" }),
+  getAllPayments: () => apiFetch<AdminPaymentRecord[]>("/admin/get-all-payments", { method: "GET" }),
 
-  getProfile: () =>
-    apiFetch("/admin/get-profile", { method: "GET" }),
+  getProfile: () => apiFetch<AdminProfileRecord>("/admin/get-profile", { method: "GET" }),
 
   updateProfile: (data: {
     fullName?: string;
     phone?: string;
     profileImageUrl?: string;
     profileFileId?: string;
-  }) =>
-    apiFetch("/admin/update-profile", { method: "POST", body: JSON.stringify(data) }),
+  }) => apiFetch<AdminProfileRecord>("/admin/update-profile", { method: "POST", body: JSON.stringify(data) }),
 
-  logout: () =>
-    apiFetch("/admin/logout", { method: "POST", body: JSON.stringify({}) }),
+  logout: () => apiFetch<null>("/admin/logout", { method: "DELETE" }),
 
-  deleteAccount: () =>
-    apiFetch("/admin/delete-account", { method: "DELETE" }),
+  deleteAccount: () => apiFetch<null>("/admin/delete-acc", { method: "DELETE" }),
 };
-
-// ============ ROOT ADMIN ============
 
 export const rootAdminApi = {
   register: (data: { fullName: string; email: string; password: string }) =>
-    apiFetch("/root-admin/register", { method: "POST", body: JSON.stringify(data) }),
+    apiFetch<null>("/root-admin/register", { method: "POST", body: JSON.stringify(data) }),
 
   login: (data: { email: string; password: string }) =>
-    apiFetch("/root-admin/login", { method: "POST", body: JSON.stringify(data) }),
+    apiFetch<null>("/root-admin/login", { method: "POST", body: JSON.stringify(data) }),
 
   verifyAccount: (verifyToken: string) =>
-    apiFetch("/root-admin/verify-account", { method: "POST", body: JSON.stringify({ verifyToken }) }),
+    apiFetch<null>("/root-admin/verify-account", { method: "POST", body: JSON.stringify({ verifyToken }) }),
 
   approveSubAdmin: (adminId: string) =>
-    apiFetch("/root-admin/approve-sub-admin", { method: "POST", body: JSON.stringify({ adminId }) }),
+    apiFetch<null>("/root-admin/approve-sub-admin", { method: "POST", body: JSON.stringify({ adminId }) }),
 
   rejectSubAdmin: (adminId: string) =>
-    apiFetch("/root-admin/reject-sub-admin", { method: "POST", body: JSON.stringify({ adminId }) }),
+    apiFetch<null>("/root-admin/reject-sub-admin", { method: "POST", body: JSON.stringify({ adminId }) }),
 
   approveAgent: (agentId: string) =>
-    apiFetch("/root-admin/approve-agent", { method: "POST", body: JSON.stringify({ agentId }) }),
+    apiFetch<null>("/root-admin/approve-agent", { method: "POST", body: JSON.stringify({ agentId }) }),
 
   approvePackage: (packageId: string) =>
-    apiFetch("/root-admin/approve-pkg", { method: "POST", body: JSON.stringify({ packageId }) }),
+    apiFetch<null>("/root-admin/approve-pkg", { method: "POST", body: JSON.stringify({ packageId }) }),
 
   rejectPackage: (packageId: string) =>
-    apiFetch("/root-admin/reject-pkg", { method: "POST", body: JSON.stringify({ packageId }) }),
+    apiFetch<null>("/root-admin/reject-pkg", { method: "POST", body: JSON.stringify({ packageId }) }),
 
-  getAllSubAdmins: () =>
-    apiFetch("/root-admin/get-all-sub-admin", { method: "GET" }),
+  getAllSubAdmins: () => apiFetch<UserListRecord[]>("/root-admin/get-all-sub-admin", { method: "GET" }),
 
-  getAllAgents: () =>
-    apiFetch("/root-admin/get-all-agent", { method: "GET" }),
+  getAllAgents: () => apiFetch<AgentListRecord[]>("/root-admin/get-all-agent", { method: "GET" }),
 
-  getAllUsers: () =>
-    apiFetch("/root-admin/get-all-user", { method: "GET" }),
+  getAllUsers: () => apiFetch<UserListRecord[]>("/root-admin/get-all-user", { method: "GET" }),
 
-  getAllPackages: () =>
-    apiFetch("/root-admin/get-all-pkg", { method: "GET" }),
+  getAllPackages: () => apiFetch<PublicPackageRecord[]>("/root-admin/get-all-pkg", { method: "GET" }),
 
   getAgentPackages: (id: string) =>
-    apiFetch("/root-admin/get-agent-pkg", { method: "POST", body: JSON.stringify({ id }) }),
+    apiFetch<PublicPackageRecord[]>("/root-admin/get-agent-pkg", { method: "POST", body: JSON.stringify({ id }) }),
 
-  getAllPayments: () =>
-    apiFetch("/root-admin/get-all-payments", { method: "GET" }),
+  getAllPayments: () => apiFetch<AdminPaymentRecord[]>("/root-admin/get-all-payments", { method: "GET" }),
 
-  getProfile: () =>
-    apiFetch("/root-admin/get-profile", { method: "GET" }),
+  getProfile: () => apiFetch<AdminProfileRecord>("/root-admin/get-profile", { method: "GET" }),
 
-  updateProfile: (data: any) =>
-    apiFetch("/root-admin/update-profile", { method: "POST", body: JSON.stringify(data) }),
+  updateProfile: (data: {
+    fullName?: string;
+    phone?: string;
+    profileImageUrl?: string;
+    profileFileId?: string;
+  }) => apiFetch<AdminProfileRecord>("/root-admin/update-profile", { method: "POST", body: JSON.stringify(data) }),
 
-  logout: () =>
-    apiFetch("/root-admin/logout", { method: "POST", body: JSON.stringify({}) }),
+  logout: () => apiFetch<null>("/root-admin/logout", { method: "DELETE" }),
 
-  deleteAccount: () =>
-    apiFetch("/root-admin/delete-account", { method: "DELETE" }),
+  deleteAccount: () => apiFetch<null>("/root-admin/delete-acc", { method: "DELETE" }),
 };
-
-// ============ PAYMENT ============
 
 export const paymentApi = {
   createOrder: (data: { packageId: string; numberOfTravelers: number }) =>
-    apiFetch("/payment/create-order", { method: "POST", body: JSON.stringify(data) }),
+    apiFetch<PaymentOrderRecord>("/payment/create-order", { method: "POST", body: JSON.stringify(data) }),
 
   verifyPayment: (data: {
     razorpay_order_id: string;
@@ -350,51 +487,73 @@ export const paymentApi = {
     razorpay_signature: string;
     bookingId: string;
     paymentId: string;
-  }) =>
-    apiFetch("/payment/verify-payment", { method: "POST", body: JSON.stringify(data) }),
+  }) => apiFetch<null>("/payment/verify-payment", { method: "POST", body: JSON.stringify(data) }),
 };
-
-// ============ ROLE HELPERS ============
 
 export type ApiRole = "TRAVELER" | "AGENT" | "ADMIN" | "ROOTADMIN";
 
-/** Map API role to frontend route prefix */
 export function roleToRoute(role: ApiRole): string {
   switch (role) {
-    case "TRAVELER": return "customer";
-    case "AGENT": return "partner";
+    case "TRAVELER":
+      return "customer";
+    case "AGENT":
+      return "partner";
     case "ADMIN":
-    case "ROOTADMIN": return "admin";
-    default: return "customer";
+    case "ROOTADMIN":
+      return "admin";
+    default:
+      return "customer";
   }
 }
 
-/** Map frontend role to API login endpoint */
 export function getLoginApiForRole(role: string) {
   switch (role) {
-    case "admin": return adminApi.login;
-    case "partner": return agentApi.login;
+    case "admin":
+      return adminApi.login;
+    case "partner":
+      return agentApi.login;
     case "customer":
-    default: return userApi.login;
+    default:
+      return userApi.login;
   }
 }
 
-/** Map frontend role to profile fetcher */
 export function getProfileApiForRole(role: string) {
   switch (role) {
-    case "admin": return adminApi.getProfile;
-    case "partner": return agentApi.getProfile;
+    case "admin":
+      return adminApi.getProfile;
+    case "partner":
+      return agentApi.getProfile;
     case "customer":
-    default: return userApi.getProfile;
+    default:
+      return userApi.getProfile;
   }
 }
 
-/** Map frontend role to logout API */
 export function getLogoutApiForRole(role: string) {
   switch (role) {
-    case "admin": return adminApi.logout;
-    case "partner": return agentApi.logout;
+    case "admin":
+      return adminApi.logout;
+    case "partner":
+      return agentApi.logout;
     case "customer":
-    default: return userApi.logout;
+    default:
+      return userApi.logout;
   }
+}
+
+export function getProfileUpdateApiForRole(role: string) {
+  switch (role) {
+    case "admin":
+      return adminApi.updateProfile;
+    case "partner":
+      return agentApi.updateProfile;
+    case "customer":
+    default:
+      return userApi.updateProfile;
+  }
+}
+
+export function getPrimaryErrorMessage<T>(response: ApiResponse<T>): string {
+  return response.errors?.find((error) => error.message)?.message || response.message;
 }

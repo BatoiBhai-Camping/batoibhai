@@ -1,7 +1,7 @@
 import { useState } from "react";
 import PanelLayout from "@/components/PanelLayout";
 import { StatCard, StatusBadge, PageHeader } from "@/components/StatCard";
-import { partnerStats, bookings, packages, notifications, analyticsData } from "@/data/dummyData";
+import { usePartnerData } from "@/hooks/useBackendData";
 import { Wallet, CalendarCheck, Package, Star, TrendingUp, Clock, Bell, Eye, ArrowUpRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
@@ -19,6 +19,7 @@ const earningsData = [
 ];
 
 export default function PartnerDashboard() {
+  const { partnerStats, bookings, packages, notifications, analyticsData } = usePartnerData();
   const navigate = useNavigate();
   const partnerBookings = bookings.filter(b => b.partner === "OdishaTourism Pro");
   const pendingCount = partnerBookings.filter(b => b.status === "pending").length;

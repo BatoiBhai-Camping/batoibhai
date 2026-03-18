@@ -1,7 +1,7 @@
 import { useState } from "react";
 import PanelLayout from "@/components/PanelLayout";
 import { StatusBadge, PageHeader, DataTablePagination } from "@/components/StatCard";
-import { bookings } from "@/data/dummyData";
+import { usePublicData } from "@/hooks/useBackendData";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Eye, Download, MessageSquare, Search, FileText } from "lucide-react";
@@ -9,10 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Chip, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, Avatar, Tooltip, IconButton } from "@mui/material";
 
 export default function CustomerBookings() {
-  const myBookings = bookings.filter(b => b.customer === "Rajesh Mohanty" || b.customer === "Bikash Das");
+  const { customerBookings } = usePublicData();
+  const myBookings = customerBookings;
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
-  const [selectedBooking, setSelectedBooking] = useState<typeof bookings[0] | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<typeof myBookings[number] | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: "" });
 
   const filtered = myBookings.filter(b => searchTerm === "" || b.package.toLowerCase().includes(searchTerm.toLowerCase()) || b.id.toLowerCase().includes(searchTerm.toLowerCase()));

@@ -2,21 +2,30 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PanelLayout from "@/components/PanelLayout";
 import { StatCard, PageHeader } from "@/components/StatCard";
-import { customerStats, destinations, packages, offers, hotels } from "@/data/dummyData";
+import { usePublicData } from "@/hooks/useBackendData";
 import { Map, Wallet, Heart, CalendarCheck, Star, MapPin, Users, Search, Hotel, Tag, Percent, Filter, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Chip, Snackbar, Alert, Tooltip, Rating } from "@mui/material";
 
-const categories = ["All", "Beach", "Hill", "Nature", "Heritage", "Wildlife"];
+const categories = ["All", "Beach", "Hill", "Nature", "Heritage", "Wildlife", "Travel"];
 
 export default function CustomerDashboard() {
+  const { destinations, packages, offers, hotels, customerTrips, customerBookings, wishlist } = usePublicData();
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [wishlistedIds, setWishlistedIds] = useState<Set<number>>(new Set([1, 3]));
   const [snackbar, setSnackbar] = useState({ open: false, message: "" });
   const navigate = useNavigate();
+
+  const customerStats = {
+    totalTrips: customerTrips.length,
+    totalSpent: customerBookings.reduce((sum, b) => sum + Number(b.amount || 0), 0),
+    upcomingTrips: customerTrips.filter((t) => t.status === "upcoming").length,
+    savedPlaces: wishlist.length,
+    rewards: Math.round(customerBookings.reduce((sum, b) => sum + Number(b.amount || 0), 0) * 0.02),
+  };
 
   const filtered = destinations
     .filter(d => activeCategory === "All" || d.category === activeCategory)
@@ -127,7 +136,7 @@ export default function CustomerDashboard() {
                   <span className="text-primary font-bold">₹{d.price.toLocaleString()}</span>
                   <span className="text-xs text-muted-foreground ml-1">per person</span>
                 </div>
-                <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs h-7" onClick={() => navigate(`/customer/book?package=1`)}>
+                <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs h-7" onClick={() => navigate(`/customer/book?package=${d.id}`)}>
                   Book <ArrowRight className="w-3 h-3 ml-0.5" />
                 </Button>
               </div>

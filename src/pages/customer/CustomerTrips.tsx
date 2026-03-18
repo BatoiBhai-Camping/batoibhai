@@ -1,7 +1,7 @@
 import { useState } from "react";
 import PanelLayout from "@/components/PanelLayout";
 import { StatusBadge, PageHeader } from "@/components/StatCard";
-import { myTrips } from "@/data/dummyData";
+import { usePublicData } from "@/hooks/useBackendData";
 import { motion } from "framer-motion";
 import { Star, Calendar, MapPin, Download, Eye, XCircle, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Chip, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Aler
 import { Input } from "@/components/ui/input";
 
 export default function CustomerTrips() {
+  const { customerTrips: myTrips } = usePublicData();
   const [cancelDialog, setCancelDialog] = useState<typeof myTrips[0] | null>(null);
   const [reviewDialog, setReviewDialog] = useState<typeof myTrips[0] | null>(null);
   const [reviewRating, setReviewRating] = useState(5);

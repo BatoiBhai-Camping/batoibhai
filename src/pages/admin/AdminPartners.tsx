@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import PanelLayout from "@/components/PanelLayout";
 import { StatusBadge, PageHeader } from "@/components/StatCard";
-import { partners } from "@/data/dummyData";
+import { useAdminData } from "@/hooks/useBackendData";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { adminApi } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
 
 export default function AdminPartners() {
+  const { partners } = useAdminData();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedPartner, setSelectedPartner] = useState<any>(null);

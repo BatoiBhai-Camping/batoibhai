@@ -1,20 +1,21 @@
 import { ReactNode, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, useSidebar,
 } from "@/components/ui/sidebar";
 import { NavLink } from "@/components/NavLink";
-import { Avatar, Badge, IconButton, Tooltip, Menu, MenuItem, Divider } from "@mui/material";
+import { Avatar, Badge, IconButton, Tooltip, Menu, MenuItem, Divider, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Snackbar, Alert } from "@mui/material";
 import {
   LayoutDashboard, Package, Users, BarChart3, Map, CalendarCheck, Heart,
-  Wallet, Building2, Star, Compass, Hotel, Bell, Settings, LogOut,
-  Search, Moon, Sun, ChevronDown, HelpCircle
+  Wallet, Building2, Star, Compass, Bell, Settings, LogOut,
+  Search, HelpCircle, Trash2
 } from "lucide-react";
-import { notifications } from "@/data/dummyData";
+import { useAdminData, usePartnerData } from "@/hooks/useBackendData";
+import { notifications as fallbackNotifications } from "@/data/dummyData";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
+import { getPrimaryErrorMessage, getProfileUpdateApiForRole, userApi } from "@/lib/api";
 
 type PanelType = "admin" | "partner" | "customer";
 
@@ -97,62 +98,88 @@ function PanelSidebar({ panel }: { panel: PanelType }) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        <div className="mt-auto">
-          {!collapsed && (
-            <>
-              <div className="px-4 py-3 border-t border-sidebar-border">
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <a href="#" className="text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
-                        <Settings className="mr-3 h-4 w-4 shrink-0" />
-                        <span>Settings</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <a href="#" className="text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
-                        <HelpCircle className="mr-3 h-4 w-4 shrink-0" />
-                        <span>Help & Support</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </div>
-              <div className="p-4 border-t border-sidebar-border">
-                <div className="flex items-center gap-3">
-                  <Avatar sx={{ width: 36, height: 36, bgcolor: "hsl(32, 95%, 52%)", fontSize: 14, fontWeight: 700 }}>
-                    {config.user.name[0]}
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-sidebar-foreground truncate">{config.user.name}</p>
-                    <p className="text-xs text-sidebar-muted truncate">{config.user.email}</p>
-                  </div>
-                  <Tooltip title="Logout" arrow>
-                    <IconButton size="small" sx={{ color: "hsl(192, 30%, 60%)" }}>
-                      <LogOut className="w-4 h-4" />
-                    </IconButton>
-                  </Tooltip>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
       </SidebarContent>
     </Sidebar>
   );
 }
 
 export default function PanelLayout({ children, panel }: PanelLayoutProps) {
+  const adminData = useAdminData();
+  const partnerData = usePartnerData();
+  const notifications = panel === "admin" ? adminData.notifications : panel === "partner" ? partnerData.notifications : fallbackNotifications;
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
   const [profileAnchor, setProfileAnchor] = useState<null | HTMLElement>(null);
-  const { user, logout } = useAuth();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
+
+  const { user, logout, refreshProfile, updateProfile } = useAuth();
   const navigate = useNavigate();
   const config = panelConfig[panel];
   const unreadNotifs = notifications.filter(n => !n.read).length;
   const displayUser = user || config.user;
+
+  const [form, setForm] = useState({
+    fullName: displayUser.name || "",
+    phone: user?.phone || "",
+    profileImageUrl: user?.avatar || "",
+  });
+
+  const handleOpenSettings = () => {
+    setForm({
+      fullName: displayUser.name || "",
+      phone: user?.phone || "",
+      profileImageUrl: user?.avatar || "",
+    });
+    setProfileAnchor(null);
+    setSettingsOpen(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      const updateProfileApi = getProfileUpdateApiForRole(user.role);
+      const payload = {
+        ...(form.fullName.trim() ? { fullName: form.fullName.trim() } : {}),
+        ...(form.phone.trim() ? { phone: form.phone.trim() } : {}),
+        ...(form.profileImageUrl.trim() ? { profileImageUrl: form.profileImageUrl.trim() } : {}),
+      };
+      const response = await updateProfileApi(payload);
+
+      if (!response.success) {
+        setSnackbar({ open: true, message: getPrimaryErrorMessage(response), severity: "error" });
+        return;
+      }
+
+      updateProfile({ name: form.fullName, phone: form.phone, avatar: form.profileImageUrl });
+      await refreshProfile();
+      setSettingsOpen(false);
+      setSnackbar({ open: true, message: "Profile updated successfully", severity: "success" });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error instanceof Error ? error.message : "Unable to update profile",
+        severity: "error",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user || user.role !== "customer") return;
+    const ok = window.confirm("Delete your account permanently?");
+    if (!ok) return;
+
+    const res = await userApi.deleteAccount();
+    if (!res?.success) {
+      setSnackbar({ open: true, message: res?.message || "Delete account failed", severity: "error" });
+      return;
+    }
+    await logout();
+    navigate("/login");
+  };
 
   return (
     <SidebarProvider>
@@ -229,11 +256,21 @@ export default function PanelLayout({ children, panel }: PanelLayoutProps) {
                   <p className="font-medium text-sm">{displayUser.name}</p>
                   <p className="text-xs text-muted-foreground">{displayUser.role || config.user.role}</p>
                 </div>
-                <MenuItem sx={{ fontSize: 13, py: 1 }}><Settings className="w-3.5 h-3.5 mr-2" /> Settings</MenuItem>
+                <MenuItem onClick={handleOpenSettings} sx={{ fontSize: 13, py: 1 }}><Settings className="w-3.5 h-3.5 mr-2" /> Settings</MenuItem>
                 <MenuItem sx={{ fontSize: 13, py: 1 }}><HelpCircle className="w-3.5 h-3.5 mr-2" /> Help Center</MenuItem>
                 <Divider />
-                <MenuItem onClick={() => { logout(); navigate("/"); setProfileAnchor(null); }} sx={{ fontSize: 13, py: 1, color: "hsl(0, 72%, 51%)" }}><LogOut className="w-3.5 h-3.5 mr-2" /> Logout</MenuItem>
+              <MenuItem
+                onClick={async () => {
+                  await logout();
+                  navigate("/");
+                  setProfileAnchor(null);
+                }}
+                sx={{ fontSize: 13, py: 1, color: "hsl(0, 72%, 51%)" }}
+              >
+                <LogOut className="w-3.5 h-3.5 mr-2" /> Logout
+              </MenuItem>
               </Menu>
+
             </div>
           </header>
           <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
@@ -241,6 +278,45 @@ export default function PanelLayout({ children, panel }: PanelLayoutProps) {
           </main>
         </div>
       </div>
+
+      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Profile Settings</DialogTitle>
+        <DialogContent className="space-y-4" sx={{ pt: "12px !important" }}>
+          <TextField
+            label="Full Name"
+            fullWidth
+            value={form.fullName}
+            onChange={(e) => setForm((prev) => ({ ...prev, fullName: e.target.value }))}
+          />
+          <TextField
+            label="Phone"
+            fullWidth
+            value={form.phone}
+            onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+          />
+          <TextField
+            label="Profile Image URL"
+            fullWidth
+            value={form.profileImageUrl}
+            onChange={(e) => setForm((prev) => ({ ...prev, profileImageUrl: e.target.value }))}
+          />
+          {user?.role === "customer" && (
+            <Button variant="outline" className="w-full text-destructive border-destructive/30" onClick={handleDeleteAccount}>
+              <Trash2 className="w-4 h-4 mr-2" /> Delete Account
+            </Button>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button variant="outline" onClick={() => setSettingsOpen(false)}>Cancel</Button>
+          <Button onClick={handleSaveProfile} disabled={saving} className="bg-primary text-primary-foreground">
+            {saving ? "Saving..." : "Save Changes"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar((s) => ({ ...s, open: false }))}>
+        <Alert severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
+      </Snackbar>
     </SidebarProvider>
   );
 }

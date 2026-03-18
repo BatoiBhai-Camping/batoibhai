@@ -1,11 +1,21 @@
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import {
-  userApi, agentApi, adminApi,
-  roleToRoute, getLogoutApiForRole, getProfileApiForRole,
-  type ApiRole
+  adminApi,
+  agentApi,
+  getLoginApiForRole,
+  getLogoutApiForRole,
+  getPrimaryErrorMessage,
+  getProfileApiForRole,
+  type AdminProfileRecord,
+  type AgentProfileRecord,
+  type ApiRole,
+  type UserProfileRecord,
+  userApi,
 } from "@/lib/api";
 
 export type UserRole = "admin" | "partner" | "customer";
+
+type ProfileRecord = UserProfileRecord | AgentProfileRecord | AdminProfileRecord;
 
 export interface User {
   id: string;
@@ -28,7 +38,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string, loginAs: UserRole) => Promise<{ success: boolean; error?: string }>;
   signup: (data: SignupData) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
+  logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   updateProfile: (data: Partial<User>) => void;
   refreshProfile: () => Promise<void>;
@@ -44,162 +54,166 @@ interface SignupData {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-function mapApiRole(apiRole: string): UserRole {
+function mapApiRole(apiRole: ApiRole): UserRole {
   switch (apiRole) {
-    case "AGENT": return "partner";
+    case "AGENT":
+      return "partner";
     case "ADMIN":
-    case "ROOTADMIN": return "admin";
+    case "ROOTADMIN":
+      return "admin";
     case "TRAVELER":
-    default: return "customer";
+    default:
+      return "customer";
   }
 }
 
-function mapProfileToUser(data: any, role: UserRole, apiRole: ApiRole): User {
+function inferApiRole(profile: ProfileRecord, fallbackRole: UserRole): ApiRole {
+  if ("agentProfile" in profile) return "AGENT";
+  if (profile.role === "ADMIN" || profile.role === "ROOTADMIN") return profile.role;
+  if (profile.role === "TRAVELER") return "TRAVELER";
+  return fallbackRole === "admin" ? "ADMIN" : fallbackRole === "partner" ? "AGENT" : "TRAVELER";
+}
+
+function mapProfileToUser(profile: ProfileRecord, fallbackRole: UserRole): User {
+  const apiRole = inferApiRole(profile, fallbackRole);
+
   return {
-    id: data.id || data.userId || "",
-    name: data.fullName || "",
-    email: data.email || "",
-    phone: data.phone || "",
-    role,
+    id: profile.id || ("userId" in profile ? profile.userId : ""),
+    name: profile.fullName || "",
+    email: profile.email || "",
+    phone: profile.phone || "",
+    role: mapApiRole(apiRole),
     apiRole,
-    verified: data.emailVerified ?? false,
-    createdAt: data.createdAt || new Date().toISOString(),
-    profileImage: data.profileImage || null,
-    avatar: data.profileImage?.imageUrl || undefined,
-    companyName: data.agentProfile?.companyName || data.companyName || undefined,
-    agentStatus: data.agentProfile?.status || data.status || undefined,
+    verified: profile.emailVerified ?? false,
+    createdAt: profile.createdAt || new Date().toISOString(),
+    profileImage: profile.profileImage || null,
+    avatar: profile.profileImage?.imageUrl,
+    companyName: "agentProfile" in profile ? profile.agentProfile?.companyName : undefined,
+    agentStatus: "agentProfile" in profile ? profile.agentProfile?.status : undefined,
   };
 }
 
+function getStoredUser(): User | null {
+  const stored = localStorage.getItem("bb_user");
+  if (!stored) return null;
+
+  try {
+    return JSON.parse(stored) as User;
+  } catch {
+    localStorage.removeItem("bb_user");
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    const stored = localStorage.getItem("bb_user");
-    return stored ? JSON.parse(stored) : null;
-  });
+  const [user, setUser] = useState<User | null>(getStoredUser);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Persist user to localStorage
-  const persistUser = useCallback((u: User | null) => {
-    setUser(u);
-    if (u) {
-      localStorage.setItem("bb_user", JSON.stringify(u));
-      localStorage.setItem("bb_role", u.role);
+  const persistUser = useCallback((nextUser: User | null) => {
+    setUser(nextUser);
+    if (nextUser) {
+      localStorage.setItem("bb_user", JSON.stringify(nextUser));
+      localStorage.setItem("bb_role", nextUser.role);
     } else {
       localStorage.removeItem("bb_user");
       localStorage.removeItem("bb_role");
     }
   }, []);
 
-  // Fetch profile based on role
   const fetchProfile = useCallback(async (role: UserRole): Promise<User | null> => {
     const getProfile = getProfileApiForRole(role);
-    const res = await getProfile();
-    if (res.success && res.data) {
-      const apiRole: ApiRole = role === "admin" ? "ADMIN" : role === "partner" ? "AGENT" : "TRAVELER";
-      return mapProfileToUser(res.data, role, apiRole);
-    }
-    return null;
+    const response = await getProfile();
+    if (!response.success || !response.data) return null;
+    return mapProfileToUser(response.data, role);
   }, []);
 
-  // Login with role selection
-  const login = useCallback(async (email: string, password: string, loginAs: UserRole) => {
-    setIsLoading(true);
-    try {
-      // Call the correct login endpoint based on selected role
-      let loginFn: (data: { email: string; password: string }) => Promise<any>;
-      switch (loginAs) {
-        case "admin": loginFn = adminApi.login; break;
-        case "partner": loginFn = agentApi.login; break;
-        case "customer":
-        default: loginFn = userApi.login; break;
+  useEffect(() => {
+    const restoreSession = async () => {
+      if (user) return;
+
+      const storedRole = localStorage.getItem("bb_role");
+      if (storedRole !== "admin" && storedRole !== "partner" && storedRole !== "customer") return;
+
+      setIsLoading(true);
+      try {
+        const restoredUser = await fetchProfile(storedRole);
+        if (restoredUser) {
+          persistUser(restoredUser);
+        }
+      } finally {
+        setIsLoading(false);
       }
+    };
 
-      const result = await loginFn({ email, password });
+    void restoreSession();
+  }, [fetchProfile, persistUser, user]);
 
-      if (!result.success) {
-        return { success: false, error: result.message || "Login failed" };
+  const login = useCallback(
+    async (email: string, password: string, loginAs: UserRole) => {
+      setIsLoading(true);
+      try {
+        const response = await getLoginApiForRole(loginAs)({ email, password });
+        if (!response.success) {
+          return { success: false, error: getPrimaryErrorMessage(response) };
+        }
+
+        const profileUser = await fetchProfile(loginAs);
+        if (profileUser) {
+          persistUser(profileUser);
+          return { success: true };
+        }
+
+        return { success: false, error: "Login succeeded, but your profile could not be loaded yet." };
+      } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : "Network error" };
+      } finally {
+        setIsLoading(false);
       }
+    },
+    [fetchProfile, persistUser]
+  );
 
-      // Login sets cookies, now fetch profile
-      const profileUser = await fetchProfile(loginAs);
-      if (profileUser) {
-        persistUser(profileUser);
-        return { success: true };
-      }
+  const signup = useCallback(
+    async (data: SignupData) => {
+      setIsLoading(true);
+      try {
+        const response =
+          data.role === "customer"
+            ? await userApi.register({ fullName: data.name, email: data.email, password: data.password })
+            : data.role === "admin"
+              ? await adminApi.register({ fullName: data.name, email: data.email, password: data.password })
+              : await agentApi.register({
+                  fullName: data.name,
+                  email: data.email,
+                  password: data.password,
+                  phone: data.phone || "+919999999999",
+                  profileImageUrl: "https://placehold.co/200x200/png",
+                  profileImageFileId: "temporary-profile-image",
+                  companyName: `${data.name} Travels`,
+                  description: "Travel partner onboarding from the BatoiBhai web app",
+                  aadharNumber: "123456789012",
+                  bannerImageUrl: "https://placehold.co/1200x400/png",
+                  bannerImageFileId: "temporary-banner-image",
+                  addressType: "PERMANENT",
+                  country: "India",
+                  state: "Odisha",
+                  district: "Khordha",
+                  pin: "751001",
+                  city: "Bhubaneswar",
+                  aadharDocumentUrl: "https://placehold.co/600x800/png",
+                  aadharDocumentFileId: "temporary-aadhar-document",
+                });
 
-      // If profile fetch fails, create minimal user from login info
-      const minimalUser: User = {
-        id: "",
-        name: email.split("@")[0],
-        email,
-        phone: "",
-        role: loginAs,
-        apiRole: loginAs === "admin" ? "ADMIN" : loginAs === "partner" ? "AGENT" : "TRAVELER",
-        verified: false,
-        createdAt: new Date().toISOString(),
-      };
-      persistUser(minimalUser);
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error?.message || "Network error" };
-    } finally {
-      setIsLoading(false);
-    }
-  }, [fetchProfile, persistUser]);
+        if (!response.success) {
+          return { success: false, error: getPrimaryErrorMessage(response) };
+        }
 
-  // Signup
-  const signup = useCallback(async (data: SignupData) => {
-    setIsLoading(true);
-    try {
-      let result: any;
+        const profileUser = await fetchProfile(data.role);
+        if (profileUser) {
+          persistUser(profileUser);
+          return { success: true };
+        }
 
-      if (data.role === "customer") {
-        result = await userApi.register({
-          fullName: data.name,
-          email: data.email,
-          password: data.password,
-        });
-      } else if (data.role === "admin") {
-        result = await adminApi.register({
-          fullName: data.name,
-          email: data.email,
-          password: data.password,
-        });
-      } else {
-        // For partner/agent, we do a basic registration
-        // Full agent registration requires more fields - redirect to complete profile
-        result = await agentApi.register({
-          fullName: data.name,
-          email: data.email,
-          password: data.password,
-          phone: data.phone,
-          profileImageUrl: "https://via.placeholder.com/150",
-          profileImageFileId: "placeholder",
-          companyName: data.name + "'s Travel Agency",
-          aadharNumber: "000000000000",
-          bannerImageUrl: "https://via.placeholder.com/600x200",
-          bannerImageFileId: "placeholder_banner",
-          addressType: "PERMANENT",
-          country: "India",
-          state: "Odisha",
-          district: "Bhubaneswar",
-          pin: "751001",
-          city: "Bhubaneswar",
-          aadharDocumentUrl: "https://via.placeholder.com/doc",
-          aadharDocumentFileId: "placeholder_doc",
-        });
-      }
-
-      if (!result.success) {
-        return { success: false, error: result.message || "Registration failed" };
-      }
-
-      // After registration, cookies are set. Fetch profile.
-      const profileUser = await fetchProfile(data.role);
-      if (profileUser) {
-        persistUser(profileUser);
-      } else {
-        // Minimal user
         const minimalUser: User = {
           id: "",
           name: data.name,
@@ -211,80 +225,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           createdAt: new Date().toISOString(),
         };
         persistUser(minimalUser);
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : "Network error" };
+      } finally {
+        setIsLoading(false);
       }
+    },
+    [fetchProfile, persistUser]
+  );
 
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error?.message || "Network error" };
-    } finally {
-      setIsLoading(false);
-    }
-  }, [fetchProfile, persistUser]);
-
-  // Logout
   const logout = useCallback(async () => {
     if (user) {
       try {
-        const logoutFn = getLogoutApiForRole(user.role);
-        await logoutFn();
+        await getLogoutApiForRole(user.role)();
       } catch {
-        // Ignore logout API errors
+        // Ignore logout API errors and clear local auth state regardless.
       }
     }
-    persistUser(null);
-  }, [user, persistUser]);
 
-  // Forgot password (placeholder - API may not have this endpoint)
-  const forgotPassword = useCallback(async (email: string) => {
+    persistUser(null);
+  }, [persistUser, user]);
+
+  const forgotPassword = useCallback(async (_email: string) => {
     setIsLoading(true);
     try {
-      // The API doesn't have a forgot password endpoint documented
-      // Simulate for now
-      await new Promise((r) => setTimeout(r, 800));
+      await new Promise((resolve) => setTimeout(resolve, 800));
       return { success: true };
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Update local profile
   const updateProfile = useCallback((data: Partial<User>) => {
-    setUser((prev) => {
-      if (!prev) return prev;
-      const updated = { ...prev, ...data };
-      localStorage.setItem("bb_user", JSON.stringify(updated));
-      return updated;
+    setUser((previousUser) => {
+      if (!previousUser) return previousUser;
+      const updatedUser = { ...previousUser, ...data };
+      localStorage.setItem("bb_user", JSON.stringify(updatedUser));
+      return updatedUser;
     });
   }, []);
 
-  // Refresh profile from API
   const refreshProfile = useCallback(async () => {
     if (!user) return;
-    const profileUser = await fetchProfile(user.role);
-    if (profileUser) {
-      persistUser(profileUser);
+
+    const refreshedUser = await fetchProfile(user.role);
+    if (refreshedUser) {
+      persistUser(refreshedUser);
     }
-  }, [user, fetchProfile, persistUser]);
+  }, [fetchProfile, persistUser, user]);
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      isAuthenticated: !!user,
-      isLoading,
-      login,
-      signup,
-      logout,
-      forgotPassword,
-      updateProfile,
-      refreshProfile,
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isLoading,
+        login,
+        signup,
+        logout,
+        forgotPassword,
+        updateProfile,
+        refreshProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
+  return context;
 }
