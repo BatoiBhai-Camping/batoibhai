@@ -266,7 +266,7 @@ export default function BookingFlow() {
                       <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mt-1">
                         <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {selectedPackage.duration}</span>
                         <span className="flex items-center gap-1"><Users className="w-4 h-4" /> Max {selectedPackage.maxPeople}</span>
-                        <span className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {selectedPackage.destination || selectedPackage.partner}</span>
+                        <span className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {(selectedPackage as any).destination || selectedPackage.partner}</span>
                       </div>
                       <div className="flex flex-wrap gap-1.5 mt-3">
                         {selectedPackage.includes.map(inc => (<Chip key={inc} label={inc} size="small" sx={{ bgcolor: "hsl(210,80%,55%,0.1)", color: "hsl(210,80%,45%)", fontWeight: 600, fontSize: 10, height: 22 }} />))}

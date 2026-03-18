@@ -112,6 +112,9 @@ export function useAdminData() {
         joinedDate: u.createdAt || new Date().toISOString(),
         bookings: Number(u.bookings || 0),
         spent: Number(u.spent || 0),
+        city: u.city || u.addresses?.[0]?.city || "Odisha",
+        trips: Number(u.trips || u.bookings || 0),
+        joined: u.createdAt ? new Date(u.createdAt).toLocaleDateString() : new Date().toLocaleDateString(),
       }))
     : fallbackCustomers;
 
