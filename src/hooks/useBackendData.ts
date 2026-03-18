@@ -20,7 +20,7 @@ const toArray = <T,>(value: unknown, fallback: T[]): T[] => (Array.isArray(value
 
 export function usePublicData() {
   const fetcher = useCallback(() => appApi.getAllPackages(), []);
-  const { data } = useApi<any>(fetcher, []);
+  const { data, isLoading } = useApi<any>(fetcher, []);
 
   const packageList = useMemo(() => {
     const list = toArray<any>(data, []);
@@ -34,12 +34,21 @@ export function usePublicData() {
       includes: p.tags || ["Hotel", "Transport"],
       partner: p.agent?.companyName || "Verified Partner",
       status: p.isBookingActive ? "active" : "pending",
-      destination: p.destination,
+      destination: p.destination || "",
       image: p.packageBannerImage?.url || p.bannerImageUrl || "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=600&h=400&fit=crop",
       rating: 4.6,
       description: p.description || "",
       bookings: Number(p.seatBooked || 0),
       category: (p.tags?.[0] || "Travel") as string,
+      // Keep raw API fields for booking
+      discountAmount: p.discountAmount,
+      discountPercentage: p.discountPercentage,
+      withTax: p.withTax,
+      taxPercentage: p.taxPercentage,
+      isBookingActive: p.isBookingActive,
+      bookingActiveFrom: p.bookingActiveFrom,
+      bookingEndAt: p.bookingEndAt,
+      availableSeats: p.availableSeats,
     }));
   }, [data]);
 
@@ -63,52 +72,67 @@ export function usePublicData() {
     destinations,
     hotels: fallbackHotels,
     offers: fallbackOffers,
+    isLoading,
   };
 }
 
 export function useAdminData() {
-  const { data: agents } = useApi<any>(useCallback(() => adminApi.getAllAgents(), []), []);
-  const { data: users } = useApi<any>(useCallback(() => adminApi.getAllUsers(), []), []);
-  const { data: packages } = useApi<any>(useCallback(() => adminApi.getAllPackages(), []), []);
-  const { data: payments } = useApi<any>(useCallback(() => adminApi.getAllPayments(), []), []);
+  const { data: agents, isLoading: loadingAgents, refetch: refetchAgents } = useApi<any>(useCallback(() => adminApi.getAllAgents(), []), []);
+  const { data: users, isLoading: loadingUsers, refetch: refetchUsers } = useApi<any>(useCallback(() => adminApi.getAllUsers(), []), []);
+  const { data: packages, isLoading: loadingPkgs, refetch: refetchPackages } = useApi<any>(useCallback(() => adminApi.getAllPackages(), []), []);
+  const { data: payments, isLoading: loadingPayments, refetch: refetchPayments } = useApi<any>(useCallback(() => adminApi.getAllPayments(), []), []);
 
-  const partnerList = toArray<any>(agents, fallbackPartners).map((p: any, i) => ({
-    id: p.id || i + 1,
-    name: p.fullName || p.companyName || p.name || fallbackPartners[0]?.name,
-    company: p.companyName || p.company || "Travel Partner",
-    email: p.email || "-",
-    phone: p.phone || "-",
-    status: (p.agentApprovedStatus || p.status || "pending").toString().toLowerCase(),
-    rating: p.rating || 4.5,
-    earnings: Number(p.earnings || 0),
-    bookings: Number(p.bookings || 0),
-    joinedDate: p.createdAt || p.joinedDate || new Date().toISOString(),
-  }));
+  const isLoading = loadingAgents || loadingUsers || loadingPkgs || loadingPayments;
+  const refetchAll = useCallback(() => {
+    refetchAgents(); refetchUsers(); refetchPackages(); refetchPayments();
+  }, [refetchAgents, refetchUsers, refetchPackages, refetchPayments]);
 
-  const customerList = toArray<any>(users, fallbackCustomers).map((u: any, i) => ({
-    id: u.id || i + 1,
-    name: u.fullName || u.name || "Traveler",
-    email: u.email || "-",
-    phone: u.phone || "-",
-    status: (u.verifyAccountStatus || u.status || "active").toString().toLowerCase(),
-    joinedDate: u.createdAt || u.joinedDate || new Date().toISOString(),
-    bookings: Number(u.bookings || 0),
-    spent: Number(u.spent || 0),
-  }));
+  const partnerList = toArray<any>(agents, []).length
+    ? toArray<any>(agents, []).map((a: any, i: number) => ({
+        id: a.id || a.userId || i + 1,
+        name: a.companyName || a.fullName || "Unknown",
+        owner: a.fullName || "",
+        email: a.email || "-",
+        phone: a.phone || "-",
+        packages: 0,
+        revenue: 0,
+        rating: 0,
+        status: (a.agentApprovedStatus || a.status || "PENDING").toString().toLowerCase() === "approved" ? "verified" : "pending",
+        joined: a.createdAt ? new Date(a.createdAt).toLocaleDateString() : "",
+      }))
+    : fallbackPartners;
+
+  const customerList = toArray<any>(users, []).length
+    ? toArray<any>(users, []).map((u: any, i: number) => ({
+        id: u.id || i + 1,
+        name: u.fullName || u.name || "Traveler",
+        email: u.email || "-",
+        phone: u.phone || "-",
+        status: (u.verifyAccountStatus || u.status || "active").toString().toLowerCase(),
+        joinedDate: u.createdAt || new Date().toISOString(),
+        bookings: Number(u.bookings || 0),
+        spent: Number(u.spent || 0),
+        city: u.city || u.addresses?.[0]?.city || "Odisha",
+        trips: Number(u.trips || u.bookings || 0),
+        joined: u.createdAt ? new Date(u.createdAt).toLocaleDateString() : new Date().toLocaleDateString(),
+      }))
+    : fallbackCustomers;
 
   const packageList = toArray<any>(packages, fallbackPackages);
+
   const paymentList = toArray<any>(payments, []);
 
   const bookingList = paymentList.length
     ? paymentList.map((p: any, i: number) => ({
-        id: p.id || p.bookingId || `BK-${i + 1}`,
+        id: p.bookingCode || p.id || p.bookingId || `BK-${i + 1}`,
         customer: p.user?.fullName || p.traveler?.fullName || "Traveler",
         package: p.package?.title || p.packageName || "Travel Package",
         date: (p.createdAt || new Date().toISOString()).slice(0, 10),
-        amount: Number(p.amount || p.payableAmount || 0),
+        amount: Number(p.amount || p.payableAmount || p.totalAmount || 0),
         status: (p.status || p.paymentStatus || "pending").toString().toLowerCase(),
         partner: p.agent?.companyName || "Partner",
         travelers: Number(p.numberOfTravelers || 1),
+        razorpayPaymentId: p.razorpayPaymentId,
       }))
     : fallbackBookings;
 
@@ -129,22 +153,32 @@ export function useAdminData() {
     analyticsData: fallbackAnalytics,
     revenueData: fallbackAnalytics.bookingsByMonth.map((m) => ({ month: m.month, revenue: m.revenue })),
     notifications: fallbackNotifications,
+    isLoading,
+    refetchAll,
   };
 }
 
 export function usePartnerData() {
-  const { data: packages } = useApi<any>(useCallback(() => agentApi.getAllPackages(), []), []);
+  const { data: packages, isLoading, refetch } = useApi<any>(useCallback(() => agentApi.getAllPackages(), []), []);
 
-  const packageList = toArray<any>(packages, fallbackPackages).map((p: any, i) => ({
-    id: p.id || i + 1,
-    name: p.title || p.name || "Package",
-    duration: `${p.durationDays || 1} Days`,
-    price: Number(p.pricePerPerson || p.price || 0),
-    maxPeople: Number(p.totalSeats || p.maxPeople || 0),
-    includes: p.tags || p.includes || ["Transport"],
-    partner: p.agent?.companyName || p.partner || "My Agency",
-    status: (p.packageApprovedStatus || p.status || "pending").toString().toLowerCase(),
-  }));
+  const packageList = toArray<any>(packages, []).length
+    ? toArray<any>(packages, []).map((p: any, i: number) => ({
+        id: p.id || i + 1,
+        name: p.title || p.name || "Package",
+        duration: `${p.durationDays || 1} Days`,
+        price: Number(p.pricePerPerson || p.price || 0),
+        maxPeople: Number(p.totalSeats || p.maxPeople || 0),
+        includes: p.tags || p.includes || ["Transport"],
+        partner: p.agent?.companyName || p.partner || "My Agency",
+        status: (p.packageApprovedStatus || p.status || "pending").toString().toLowerCase() === "approved" ? "active" : "pending",
+        destination: p.destination || "",
+        description: p.description || "",
+        durationDays: p.durationDays,
+        pricePerPerson: p.pricePerPerson,
+        totalSeats: p.totalSeats,
+        bannerImageUrl: p.packageBannerImage?.url || p.bannerImageUrl || "",
+      }))
+    : fallbackPackages;
 
   return {
     packages: packageList,
@@ -156,5 +190,7 @@ export function usePartnerData() {
     reviews: fallbackReviews,
     analyticsData: fallbackAnalytics,
     notifications: fallbackNotifications,
+    isLoading,
+    refetchPackages: refetch,
   };
 }

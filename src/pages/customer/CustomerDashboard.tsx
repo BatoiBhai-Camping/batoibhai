@@ -4,19 +4,19 @@ import PanelLayout from "@/components/PanelLayout";
 import { StatCard, PageHeader } from "@/components/StatCard";
 import { usePublicData } from "@/hooks/useBackendData";
 import { customerStats } from "@/data/dummyData";
-import { Map, Wallet, Heart, CalendarCheck, Star, MapPin, Users, Search, Hotel, Tag, Percent, Filter, ArrowRight } from "lucide-react";
+import { Map, Wallet, Heart, CalendarCheck, Star, MapPin, Users, Search, Hotel, Tag, Percent, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Chip, Snackbar, Alert, Tooltip, Rating } from "@mui/material";
+import { Chip, Snackbar, Alert, Tooltip, Skeleton } from "@mui/material";
 
 const categories = ["All", "Beach", "Hill", "Nature", "Heritage", "Wildlife"];
 
 export default function CustomerDashboard() {
-  const { destinations, packages, offers, hotels } = usePublicData();
+  const { destinations, packages, offers, hotels, isLoading } = usePublicData();
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
-  const [wishlistedIds, setWishlistedIds] = useState<Set<number>>(new Set([1, 3]));
+  const [wishlistedIds, setWishlistedIds] = useState<Set<string>>(new Set());
   const [snackbar, setSnackbar] = useState({ open: false, message: "" });
   const navigate = useNavigate();
 
@@ -24,11 +24,12 @@ export default function CustomerDashboard() {
     .filter(d => activeCategory === "All" || d.category === activeCategory)
     .filter(d => searchTerm === "" || d.name.toLowerCase().includes(searchTerm.toLowerCase()) || d.location.toLowerCase().includes(searchTerm.toLowerCase()));
 
-  const toggleWishlist = (id: number, name: string) => {
+  const toggleWishlist = (id: string | number, name: string) => {
+    const key = String(id);
     setWishlistedIds(prev => {
       const s = new Set(prev);
-      if (s.has(id)) { s.delete(id); setSnackbar({ open: true, message: `${name} removed from wishlist` }); }
-      else { s.add(id); setSnackbar({ open: true, message: `${name} added to wishlist ❤️` }); }
+      if (s.has(key)) { s.delete(key); setSnackbar({ open: true, message: `${name} removed from wishlist` }); }
+      else { s.add(key); setSnackbar({ open: true, message: `${name} added to wishlist ❤️` }); }
       return s;
     });
   };
@@ -50,14 +51,8 @@ export default function CustomerDashboard() {
         <h3 className="font-display font-semibold text-lg mb-3 flex items-center gap-2"><Tag className="w-5 h-5 text-accent" /> Active Offers</h3>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {offers.slice(0, 4).map(o => (
-            <motion.div
-              key={o.id}
-              whileHover={{ scale: 1.02 }}
-              className="bg-accent/5 border border-accent/20 rounded-xl p-4 flex items-center gap-3 cursor-pointer hover:bg-accent/10 transition-colors"
-            >
-              <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-                <Percent className="w-6 h-6 text-accent" />
-              </div>
+            <motion.div key={o.id} whileHover={{ scale: 1.02 }} className="bg-accent/5 border border-accent/20 rounded-xl p-4 flex items-center gap-3 cursor-pointer hover:bg-accent/10 transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0"><Percent className="w-6 h-6 text-accent" /></div>
               <div className="min-w-0">
                 <p className="font-semibold text-sm truncate">{o.title}</p>
                 <p className="text-xs text-muted-foreground">Code: <code className="font-bold text-accent">{o.code}</code> • {o.discount}% off</p>
@@ -75,68 +70,68 @@ export default function CustomerDashboard() {
         </div>
         <div className="flex gap-2 flex-wrap">
           {categories.map((c) => (
-            <Chip
-              key={c}
-              label={c}
-              onClick={() => setActiveCategory(c)}
-              size="small"
-              sx={{
-                bgcolor: activeCategory === c ? "hsl(192, 70%, 28%)" : "hsl(210, 18%, 94%)",
-                color: activeCategory === c ? "white" : "hsl(210, 30%, 10%)",
-                fontWeight: 600, fontSize: 12, cursor: "pointer",
-                "&:hover": { opacity: 0.85 },
-              }}
-            />
+            <Chip key={c} label={c} onClick={() => setActiveCategory(c)} size="small"
+              sx={{ bgcolor: activeCategory === c ? "hsl(192, 70%, 28%)" : "hsl(210, 18%, 94%)", color: activeCategory === c ? "white" : "hsl(210, 30%, 10%)", fontWeight: 600, fontSize: 12, cursor: "pointer", "&:hover": { opacity: 0.85 } }} />
           ))}
         </div>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-10">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="bg-card rounded-xl overflow-hidden border">
+              <Skeleton variant="rectangular" height={160} />
+              <div className="p-3 space-y-2">
+                <Skeleton variant="text" width="70%" />
+                <Skeleton variant="text" width="40%" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Destination Cards */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-10">
-        {filtered.map((d, i) => (
-          <motion.div
-            key={d.id}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className="group bg-card rounded-xl overflow-hidden border hover:shadow-lg transition-all"
-          >
-            <div className="relative h-40 overflow-hidden">
-              <img src={d.image} alt={d.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-              <button
-                onClick={() => toggleWishlist(d.id, d.name)}
-                className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all ${wishlistedIds.has(d.id) ? "bg-destructive/90" : "bg-card/80 backdrop-blur hover:bg-card"}`}
-              >
-                <Heart className={`w-4 h-4 ${wishlistedIds.has(d.id) ? "text-destructive-foreground fill-destructive-foreground" : "text-destructive"}`} />
-              </button>
-              <div className="absolute bottom-2 left-2">
-                <Chip label={d.category} size="small" sx={{ bgcolor: "rgba(255,255,255,0.92)", fontWeight: 600, fontSize: 10, height: 22 }} />
-              </div>
-            </div>
-            <div className="p-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-display font-semibold text-sm">{d.name}</h3>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3" /> {d.location}</p>
-                </div>
-                <div className="flex items-center gap-1 text-xs font-semibold">
-                  <Star className="w-3 h-3 text-accent fill-accent" /> {d.rating}
+      {!isLoading && (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-10">
+          {filtered.map((d, i) => (
+            <motion.div key={d.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+              className="group bg-card rounded-xl overflow-hidden border hover:shadow-lg transition-all">
+              <div className="relative h-40 overflow-hidden">
+                <img src={d.image} alt={d.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                <button onClick={() => toggleWishlist(d.id, d.name)}
+                  className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all ${wishlistedIds.has(String(d.id)) ? "bg-destructive/90" : "bg-card/80 backdrop-blur hover:bg-card"}`}>
+                  <Heart className={`w-4 h-4 ${wishlistedIds.has(String(d.id)) ? "text-destructive-foreground fill-destructive-foreground" : "text-destructive"}`} />
+                </button>
+                <div className="absolute bottom-2 left-2">
+                  <Chip label={d.category} size="small" sx={{ bgcolor: "rgba(255,255,255,0.92)", fontWeight: 600, fontSize: 10, height: 22 }} />
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{d.description}</p>
-              <div className="flex items-center justify-between mt-2 pt-2 border-t">
-                <div>
-                  <span className="text-primary font-bold">₹{d.price.toLocaleString()}</span>
-                  <span className="text-xs text-muted-foreground ml-1">per person</span>
+              <div className="p-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-display font-semibold text-sm">{d.name}</h3>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3" /> {d.location}</p>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs font-semibold">
+                    <Star className="w-3 h-3 text-accent fill-accent" /> {d.rating}
+                  </div>
                 </div>
-                <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs h-7" onClick={() => navigate(`/customer/book?package=1`)}>
-                  Book <ArrowRight className="w-3 h-3 ml-0.5" />
-                </Button>
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{d.description}</p>
+                <div className="flex items-center justify-between mt-2 pt-2 border-t">
+                  <div>
+                    <span className="text-primary font-bold">₹{d.price.toLocaleString()}</span>
+                    <span className="text-xs text-muted-foreground ml-1">per person</span>
+                  </div>
+                  <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs h-7" onClick={() => navigate(`/customer/book?package=${d.id}`)}>
+                    Book <ArrowRight className="w-3 h-3 ml-0.5" />
+                  </Button>
+                </div>
               </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
 
       {/* Hotels */}
       <div className="mb-10">
